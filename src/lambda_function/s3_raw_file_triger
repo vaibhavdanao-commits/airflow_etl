@@ -1,0 +1,497 @@
+import json
+import os
+import urllib.parse
+import boto3
+from datetime import datetime, timezone
+
+
+# ============================================================
+# AWS CLIENT
+# ============================================================
+
+# Lambda uses its IAM Execution Role.
+# Do NOT put AWS access key or secret key in this file.
+
+glue = boto3.client("glue")
+
+
+# ============================================================
+# CONFIGURATION
+# ============================================================
+
+# Create this as a Lambda Environment Variable:
+#
+# GLUE_JOB_NAME = retail-generic-etl
+#
+# This avoids hardcoding the Glue job name.
+
+GLUE_JOB_NAME = os.environ["extract_data_from_raw"]
+
+
+# ============================================================
+# S3 PATH PARSER
+# ============================================================
+
+def parse_s3_key(s3_key):
+    """
+    Detect dataset information from the S3 raw path.
+
+    Supported structures:
+
+    1. raw/<dataset>/<file>.csv
+
+       Example:
+       raw/products/products.csv
+
+    2. raw/<dataset>/<date>/<file>.csv
+
+       Example:
+       raw/customers/2022-01-03/customers.csv
+
+       Example:
+       raw/orders/2022-01-03/orders.csv
+    """
+
+    parts = s3_key.split("/")
+
+    # --------------------------------------------------------
+    # Path must start with raw/
+    # --------------------------------------------------------
+
+    if len(parts) < 3:
+        return None
+
+    if parts[0].lower() != "raw":
+        return None
+
+
+    # --------------------------------------------------------
+    # Dataset name
+    # --------------------------------------------------------
+
+    dataset_type = parts[1]
+
+    if not dataset_type:
+        return None
+
+
+    # --------------------------------------------------------
+    # Format 1
+    #
+    # raw/<dataset>/<file>
+    # --------------------------------------------------------
+
+    if len(parts) == 3:
+
+        file_name = parts[2]
+
+        partition_date = None
+
+
+    # --------------------------------------------------------
+    # Format 2
+    #
+    # raw/<dataset>/<date>/<file>
+    # --------------------------------------------------------
+
+    elif len(parts) == 4:
+
+        partition_date = parts[2]
+
+        file_name = parts[3]
+
+
+    # --------------------------------------------------------
+    # Unsupported structure
+    # --------------------------------------------------------
+
+    else:
+
+        return None
+
+
+    # --------------------------------------------------------
+    # Validate file
+    # --------------------------------------------------------
+
+    if not file_name.lower().endswith(".csv"):
+        return None
+
+
+    # --------------------------------------------------------
+    # Return detected information
+    # --------------------------------------------------------
+
+    return {
+        "dataset_type": dataset_type,
+        "partition_date": partition_date,
+        "file_name": file_name
+    }
+
+
+# ============================================================
+# INGESTION METADATA
+# ============================================================
+
+def create_ingestion_metadata(
+    bucket_name,
+    s3_key,
+    file_size,
+    parsed_data
+):
+    """
+    Create metadata for the incoming file.
+    """
+
+    return {
+
+        "status": "VALID",
+
+        "bucket": bucket_name,
+
+        "s3_key": s3_key,
+
+        "file_name": parsed_data["file_name"],
+
+        "dataset_type": parsed_data["dataset_type"],
+
+        "partition_date": parsed_data["partition_date"],
+
+        "file_size": file_size,
+
+        "ingestion_time": datetime.now(
+            timezone.utc
+        ).isoformat()
+    }
+
+
+# ============================================================
+# TRIGGER GLUE JOB
+# ============================================================
+
+def trigger_glue_job(
+    bucket_name,
+    s3_key,
+    dataset_type,
+    partition_date
+):
+    """
+    Trigger the generic Glue ETL job.
+    """
+
+    arguments = {
+
+        "--SOURCE_BUCKET": bucket_name,
+
+        "--SOURCE_KEY": s3_key,
+
+        "--DATASET_TYPE": dataset_type
+    }
+
+
+    # --------------------------------------------------------
+    # Add partition date only when available
+    # --------------------------------------------------------
+
+    if partition_date:
+
+        arguments["--PARTITION_DATE"] = partition_date
+
+
+    # --------------------------------------------------------
+    # Start Glue Job
+    # --------------------------------------------------------
+
+    response = glue.start_job_run(
+
+        JobName=GLUE_JOB_NAME,
+
+        Arguments=arguments
+    )
+
+
+    return response["JobRunId"]
+
+
+# ============================================================
+# LAMBDA HANDLER
+# ============================================================
+
+def lambda_handler(event, context):
+
+    print("=" * 70)
+
+    print("S3 RAW DATA INGESTION LAMBDA STARTED")
+
+    print("=" * 70)
+
+
+    processed_records = 0
+
+    invalid_records = 0
+
+    triggered_jobs = 0
+
+
+    # ========================================================
+    # PROCESS S3 EVENT RECORDS
+    # ========================================================
+
+    for record in event.get("Records", []):
+
+        s3_key = None
+
+        try:
+
+            # ------------------------------------------------
+            # Get bucket name from S3 event
+            # ------------------------------------------------
+
+            bucket_name = record["s3"]["bucket"]["name"]
+
+
+            # ------------------------------------------------
+            # Get encoded S3 object key
+            # ------------------------------------------------
+
+            encoded_key = record["s3"]["object"]["key"]
+
+
+            # ------------------------------------------------
+            # Decode S3 key
+            # ------------------------------------------------
+
+            s3_key = urllib.parse.unquote_plus(
+                encoded_key
+            )
+
+
+            # ------------------------------------------------
+            # Get file size
+            # ------------------------------------------------
+
+            file_size = record["s3"]["object"].get(
+                "size",
+                0
+            )
+
+
+            print()
+            print("-" * 70)
+
+            print(f"New S3 file detected:")
+            print(f"Bucket: {bucket_name}")
+            print(f"S3 Key: {s3_key}")
+            print(f"File Size: {file_size}")
+
+
+            # ------------------------------------------------
+            # Parse S3 path
+            # ------------------------------------------------
+
+            parsed_data = parse_s3_key(s3_key)
+
+
+            # ------------------------------------------------
+            # Invalid path/file
+            # ------------------------------------------------
+
+            if parsed_data is None:
+
+                invalid_records += 1
+
+                print(
+                    json.dumps(
+                        {
+                            "status": "INVALID",
+
+                            "bucket":
+                                bucket_name,
+
+                            "s3_key":
+                                s3_key,
+
+                            "message":
+                                "Invalid raw S3 path "
+                                "or unsupported file"
+                        },
+                        indent=2
+                    )
+                )
+
+                continue
+
+
+            # ------------------------------------------------
+            # Extract detected information
+            # ------------------------------------------------
+
+            dataset_type = parsed_data[
+                "dataset_type"
+            ]
+
+            partition_date = parsed_data[
+                "partition_date"
+            ]
+
+            file_name = parsed_data[
+                "file_name"
+            ]
+
+
+            print()
+            print("Detected Dataset Information")
+            print(f"Dataset     : {dataset_type}")
+            print(f"File        : {file_name}")
+            print(f"Partition   : {partition_date}")
+
+
+            # ------------------------------------------------
+            # Create ingestion metadata
+            # ------------------------------------------------
+
+            metadata = create_ingestion_metadata(
+
+                bucket_name=bucket_name,
+
+                s3_key=s3_key,
+
+                file_size=file_size,
+
+                parsed_data=parsed_data
+            )
+
+
+            print()
+            print("Ingestion Metadata:")
+
+            print(
+                json.dumps(
+                    metadata,
+                    indent=2
+                )
+            )
+
+
+            # ------------------------------------------------
+            # Trigger Generic Glue Job
+            # ------------------------------------------------
+
+            print()
+            print(
+                f"Triggering Glue Job: "
+                f"{GLUE_JOB_NAME}"
+            )
+
+
+            job_run_id = trigger_glue_job(
+
+                bucket_name=bucket_name,
+
+                s3_key=s3_key,
+
+                dataset_type=dataset_type,
+
+                partition_date=partition_date
+            )
+
+
+            # ------------------------------------------------
+            # Update counters
+            # ------------------------------------------------
+
+            processed_records += 1
+
+            triggered_jobs += 1
+
+
+            # ------------------------------------------------
+            # Log successful Glue trigger
+            # ------------------------------------------------
+
+            print()
+
+            print(
+                json.dumps(
+                    {
+                        "status":
+                            "GLUE_TRIGGERED",
+
+                        "dataset_type":
+                            dataset_type,
+
+                        "s3_key":
+                            s3_key,
+
+                        "glue_job":
+                            GLUE_JOB_NAME,
+
+                        "glue_job_run_id":
+                            job_run_id
+                    },
+                    indent=2
+                )
+            )
+
+
+        except Exception as error:
+
+            invalid_records += 1
+
+            print()
+
+            print(
+                json.dumps(
+                    {
+                        "status":
+                            "ERROR",
+
+                        "s3_key":
+                            s3_key,
+
+                        "error":
+                            str(error)
+                    },
+                    indent=2
+                )
+            )
+
+
+    # ========================================================
+    # FINAL RESPONSE
+    # ========================================================
+
+    response = {
+
+        "statusCode": 200,
+
+        "message":
+            "S3 raw ingestion processing completed",
+
+        "processed_records":
+            processed_records,
+
+        "invalid_records":
+            invalid_records,
+
+        "glue_jobs_triggered":
+            triggered_jobs
+    }
+
+
+    print()
+    print("=" * 70)
+
+    print("FINAL RESPONSE")
+
+    print(
+        json.dumps(
+            response,
+            indent=2
+        )
+    )
+
+    print("=" * 70)
+
+
+    return response
