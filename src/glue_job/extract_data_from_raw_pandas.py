@@ -237,42 +237,114 @@ def read_dataset(dataset_path):
         f"CSV files found: {len(csv_files)}"
     )
 
+    # --------------------------------------------------------
+    # READ CSV FILES IN CHUNKS
+    # --------------------------------------------------------
+
     dataframes = []
+
+    # Number of records read from CSV at one time
+    CHUNK_SIZE = 50000
+
+    total_records = 0
 
     for csv_file in csv_files:
 
+        print()
         print(
             f"Reading: {csv_file}"
         )
 
-        temp_df = pd.read_csv(
-            csv_file,
-            dtype=str
+        try:
+
+            chunk_number = 0
+
+            for chunk_df in pd.read_csv(
+                csv_file,
+                dtype=str,
+                chunksize=CHUNK_SIZE
+            ):
+
+                chunk_number += 1
+
+                print(
+                    f"  Processing chunk {chunk_number}: "
+                    f"{len(chunk_df)} records"
+                )
+
+                total_records += len(chunk_df)
+
+                dataframes.append(
+                    chunk_df
+                )
+
+            print(
+                f"Completed reading: {csv_file}"
+            )
+
+        except Exception as e:
+
+            print()
+            print(
+                f"ERROR reading file: {csv_file}"
+            )
+
+            print(
+                f"Error details: {e}"
+            )
+
+            raise
+
+    # --------------------------------------------------------
+    # CHECK DATA
+    # --------------------------------------------------------
+
+    if not dataframes:
+
+        raise Exception(
+            f"No data found under: {dataset_path}"
         )
 
-        dataframes.append(
-            temp_df
-        )
+    # --------------------------------------------------------
+    # COMBINE ALL CHUNKS
+    # --------------------------------------------------------
 
     df = pd.concat(
         dataframes,
         ignore_index=True
     )
 
+    print()
     print(
         f"Initial Record Count: {len(df)}"
     )
 
+    print(
+        f"Total records read from chunks: {total_records}"
+    )
+
+    # --------------------------------------------------------
+    # RAW COLUMNS
+    # --------------------------------------------------------
+
+    print()
     print("Raw Columns:")
+
     print(
         list(df.columns)
     )
+
+    # --------------------------------------------------------
+    # STANDARDIZE COLUMN NAMES
+    # --------------------------------------------------------
 
     df = clean_column_names(
         df
     )
 
+    print()
     print("Standardized Columns:")
+
     print(
         list(df.columns)
     )
@@ -297,7 +369,7 @@ def process_customers(dataset_path):
 
     required_columns = [
         "customer_id",
-        "name",
+        "customer_name",
         "email",
         "city",
         "state",
@@ -319,8 +391,8 @@ def process_customers(dataset_path):
         errors="coerce"
     ).astype("Int64")
 
-    df["name"] = (
-        df["name"]
+    df["customer_name"] = (
+        df["customer_name"]
         .astype("string")
         .str.strip()
     )
@@ -422,7 +494,7 @@ def process_customers(dataset_path):
     curated_df = duplicate_free_df.copy()
 
     curated_df["customer_name"] = (
-        curated_df["name"]
+        curated_df["customer_name"]
         .astype("string")
         .str.title()
     )
