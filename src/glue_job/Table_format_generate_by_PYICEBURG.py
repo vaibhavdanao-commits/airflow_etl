@@ -1,25 +1,46 @@
 from pathlib import Path
 
-import pandas as pd
-import pyarrow as pa
+import polars as pl
 
 from pyiceberg.catalog import load_catalog
+from pyiceberg.schema import Schema
+from pyiceberg.types import (
+    BooleanType,
+    DateType,
+    DoubleType,
+    FloatType,
+    IntegerType,
+    LongType,
+    StringType,
+    TimestampType,
+    NestedField,
+)
 
 
 # ============================================================
 # PROJECT PATH
 # ============================================================
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+PROJECT_ROOT = (
+    Path(__file__)
+    .resolve()
+    .parent
+    .parent
+    .parent
+)
 
 
 # ============================================================
 # SOURCE AND TARGET
 # ============================================================
 
-CURATED_FOLDER = PROJECT_ROOT / "curated"
+CURATED_FOLDER = (
+    PROJECT_ROOT / "curated"
+)
 
-WAREHOUSE_FOLDER = PROJECT_ROOT / "Warehouse"
+WAREHOUSE_FOLDER = (
+    PROJECT_ROOT / "Warehouse"
+)
 
 WAREHOUSE_FOLDER.mkdir(
     parents=True,
@@ -31,7 +52,10 @@ WAREHOUSE_FOLDER.mkdir(
 # ICEBERG CATALOG
 # ============================================================
 
-CATALOG_DB = WAREHOUSE_FOLDER / "pyiceberg_catalog.db"
+CATALOG_DB = (
+    WAREHOUSE_FOLDER /
+    "pyiceberg_catalog.db"
+)
 
 WAREHOUSE_URI = (
     WAREHOUSE_FOLDER
@@ -39,9 +63,11 @@ WAREHOUSE_URI = (
     .as_uri()
 )
 
+NAMESPACE = "default"
+
 
 # ============================================================
-# LOAD LOCAL ICEBERG CATALOG
+# INITIALIZE ICEBERG CATALOG
 # ============================================================
 
 print()
@@ -62,15 +88,17 @@ catalog = load_catalog(
     "local",
     type="sql",
     uri=f"sqlite:///{CATALOG_DB}",
-    warehouse=WAREHOUSE_URI
+    warehouse=WAREHOUSE_URI,
+    **{
+        "py-io-impl":
+        "pyiceberg.io.fsspec.FsspecFileIO"
+    }
 )
 
 
 # ============================================================
 # CREATE NAMESPACE
 # ============================================================
-
-NAMESPACE = "default"
 
 try:
 
@@ -93,62 +121,24 @@ except Exception:
 # FIND PARQUET FILES
 # ============================================================
 
-def find_parquet_files(table_folder):
-
-    parquet_files = list(
-        table_folder.rglob("*.parquet")
-    )
+def find_parquet_files(
+    table_folder
+):
 
     return sorted(
-        parquet_files
+        table_folder.rglob(
+            "*.parquet"
+        )
     )
 
 
 # ============================================================
-# CONVERT ONE CURATED DATASET
+# READ PARQUET FILES USING POLARS
 # ============================================================
 
-def convert_to_iceberg(table_folder):
-
-    table_name = table_folder.name
-
-    print()
-    print("=" * 100)
-    print(
-        f"CONVERTING TABLE: {table_name}"
-    )
-    print("=" * 100)
-
-    # --------------------------------------------------------
-    # Find parquet files
-    # --------------------------------------------------------
-
-    parquet_files = find_parquet_files(
-        table_folder
-    )
-
-    if not parquet_files:
-
-        print(
-            f"No Parquet files found for: {table_name}"
-        )
-
-        return
-
-    print()
-    print(
-        f"Parquet files found: {len(parquet_files)}"
-    )
-
-    for parquet_file in parquet_files:
-
-        print(
-            f"  - {parquet_file}"
-        )
-
-    # --------------------------------------------------------
-    # Read all parquet files
-    # --------------------------------------------------------
+def read_parquet_files(
+    parquet_files
+):
 
     dataframes = []
 
@@ -159,70 +149,285 @@ def convert_to_iceberg(table_folder):
             f"Reading: {parquet_file}"
         )
 
-        df = pd.read_parquet(
-            parquet_file,
-            engine="pyarrow"
+        df = pl.read_parquet(
+            parquet_file
         )
 
         print(
-            f"Rows read: {len(df)}"
+            f"Rows read: {df.height}"
         )
 
         dataframes.append(
             df
         )
 
-    # --------------------------------------------------------
-    # Combine files
-    # --------------------------------------------------------
+    if not dataframes:
+
+        raise Exception(
+            "No Parquet files found."
+        )
 
     if len(dataframes) == 1:
 
-        combined_df = dataframes[0]
+        return dataframes[0]
 
-    else:
+    return pl.concat(
+        dataframes,
+        how="vertical_relaxed"
+    )
 
-        combined_df = pd.concat(
-            dataframes,
-            ignore_index=True
+
+# ============================================================
+# PREPARE DATAFRAME
+# ============================================================
+
+def prepare_dataframe(
+    df
+):
+
+    # --------------------------------------------------------
+    # Remove unwanted index columns
+    # --------------------------------------------------------
+
+    remove_columns = []
+
+    for column in df.columns:
+
+        if (
+            column.startswith(
+                "__index"
+            )
+            or column.startswith(
+                "Unnamed:"
+            )
+        ):
+
+            remove_columns.append(
+                column
+            )
+
+    if remove_columns:
+
+        print()
+        print(
+            "Removing unwanted columns:"
         )
 
+        for column in remove_columns:
+
+            print(
+                f"  - {column}"
+            )
+
+        df = df.drop(
+            remove_columns
+        )
+
+    # --------------------------------------------------------
+    # Convert Object columns
+    # --------------------------------------------------------
+
+    for column in df.columns:
+
+        if df[column].dtype == pl.Object:
+
+            df = df.with_columns(
+                pl.col(column)
+                .cast(pl.String)
+            )
+
+    return df
+
+
+# ============================================================
+# POLARS TYPE → ICEBERG TYPE
+# ============================================================
+
+def polars_dtype_to_iceberg(
+    dtype
+):
+
+    # --------------------------------------------------------
+    # Boolean
+    # --------------------------------------------------------
+
+    if dtype == pl.Boolean:
+
+        return BooleanType()
+
+
+    # --------------------------------------------------------
+    # Signed integers
+    # --------------------------------------------------------
+
+    if dtype == pl.Int8:
+
+        return IntegerType()
+
+    if dtype == pl.Int16:
+
+        return IntegerType()
+
+    if dtype == pl.Int32:
+
+        return IntegerType()
+
+    if dtype == pl.Int64:
+
+        return LongType()
+
+
+    # --------------------------------------------------------
+    # Unsigned integers
+    # --------------------------------------------------------
+
+    if dtype == pl.UInt8:
+
+        return IntegerType()
+
+    if dtype == pl.UInt16:
+
+        return IntegerType()
+
+    if dtype == pl.UInt32:
+
+        return LongType()
+
+    if dtype == pl.UInt64:
+
+        return LongType()
+
+
+    # --------------------------------------------------------
+    # Floating point
+    # --------------------------------------------------------
+
+    if dtype == pl.Float32:
+
+        return FloatType()
+
+    if dtype == pl.Float64:
+
+        return DoubleType()
+
+
+    # --------------------------------------------------------
+    # String
+    # --------------------------------------------------------
+
+    if dtype == pl.String:
+
+        return StringType()
+
+
+    # --------------------------------------------------------
+    # Date
+    # --------------------------------------------------------
+
+    if dtype == pl.Date:
+
+        return DateType()
+
+
+    # --------------------------------------------------------
+    # Datetime
+    # --------------------------------------------------------
+
+    if isinstance(
+        dtype,
+        pl.Datetime
+    ):
+
+        return TimestampType()
+
+
+    # --------------------------------------------------------
+    # Categorical
+    # --------------------------------------------------------
+
+    if dtype == pl.Categorical:
+
+        return StringType()
+
+
+    # --------------------------------------------------------
+    # Enum
+    # --------------------------------------------------------
+
+    if dtype == pl.Enum:
+
+        return StringType()
+
+
+    # --------------------------------------------------------
+    # Unsupported types
+    # --------------------------------------------------------
+
+    return StringType()
+
+
+# ============================================================
+# CREATE ICEBERG SCHEMA
+# ============================================================
+
+def create_iceberg_schema(
+    df
+):
+
+    fields = []
+
+    field_id = 1
+
     print()
     print(
-        f"Total rows: {len(combined_df)}"
+        "Creating Iceberg schema:"
     )
 
-    print(
-        f"Total columns: {len(combined_df.columns)}"
-    )
+    for column in df.columns:
 
-    print()
-    print("Columns:")
+        polars_dtype = (
+            df[column].dtype
+        )
 
-    for column in combined_df.columns:
+        iceberg_type = (
+            polars_dtype_to_iceberg(
+                polars_dtype
+            )
+        )
+
+        field = NestedField(
+            field_id=field_id,
+            name=column,
+            field_type=iceberg_type,
+            required=False
+        )
+
+        fields.append(
+            field
+        )
 
         print(
-            f"  - {column}: "
-            f"{combined_df[column].dtype}"
+            f"  {field_id}. "
+            f"{column} : "
+            f"{polars_dtype} → "
+            f"{iceberg_type}"
         )
 
-    # --------------------------------------------------------
-    # Convert Pandas → PyArrow
-    # --------------------------------------------------------
+        field_id += 1
 
-    print()
-    print(
-        "Converting Pandas DataFrame to PyArrow..."
+    return Schema(
+        *fields
     )
 
-    arrow_table = pa.Table.from_pandas(
-        combined_df,
-        preserve_index=False
-    )
 
-    # --------------------------------------------------------
-    # Iceberg table identifier
-    # --------------------------------------------------------
+# ============================================================
+# CREATE ICEBERG TABLE
+# ============================================================
+
+def create_iceberg_table(
+    table_name,
+    df
+):
 
     identifier = (
         f"{NAMESPACE}.{table_name}"
@@ -234,31 +439,128 @@ def convert_to_iceberg(table_folder):
     )
 
     # --------------------------------------------------------
-    # Check existing table
+    # Existing table
     # --------------------------------------------------------
 
-    if catalog.table_exists(identifier):
+    if catalog.table_exists(
+        identifier
+    ):
 
         print()
         print(
             "Iceberg table already exists."
         )
 
-        print(
-            "Loading existing table..."
-        )
-
-        iceberg_table = catalog.load_table(
+        return catalog.load_table(
             identifier
         )
 
-        # ----------------------------------------------------
-        # Replace existing data for testing
-        # ----------------------------------------------------
+
+    # --------------------------------------------------------
+    # Create schema
+    # --------------------------------------------------------
+
+    iceberg_schema = (
+        create_iceberg_schema(
+            df
+        )
+    )
+
+
+    # --------------------------------------------------------
+    # Create table
+    # --------------------------------------------------------
+
+    print()
+    print(
+        "Creating Iceberg table..."
+    )
+
+    iceberg_table = (
+        catalog.create_table(
+            identifier=identifier,
+            schema=iceberg_schema
+        )
+    )
+
+    print()
+    print(
+        "Iceberg table created:"
+    )
+
+    print(
+        iceberg_table
+    )
+
+    return iceberg_table
+
+
+# ============================================================
+# CONVERT DATAFRAME TO PYARROW
+# ============================================================
+
+def dataframe_to_arrow(
+    df
+):
+
+    # Import only here so the rest of the script can
+    # initialize the Fsspec catalog first.
+
+    import pyarrow as pa
+
+    return pa.Table.from_pandas(
+        df.to_pandas(),
+        preserve_index=False
+    )
+
+
+# ============================================================
+# WRITE DATA TO ICEBERG
+# ============================================================
+
+def write_to_iceberg(
+    df,
+    iceberg_table,
+    overwrite=False
+):
+
+    print()
+
+    if overwrite:
 
         print(
-            "Replacing existing table data..."
+            "Overwriting Iceberg table..."
         )
+
+    else:
+
+        print(
+            "Appending data to Iceberg table..."
+        )
+
+
+    # --------------------------------------------------------
+    # Convert Polars → PyArrow
+    # --------------------------------------------------------
+
+    arrow_table = (
+        dataframe_to_arrow(
+            df
+        )
+    )
+
+
+    print(
+        f"Arrow rows: "
+        f"{arrow_table.num_rows}"
+    )
+
+
+    # --------------------------------------------------------
+    # Write through PyIceberg
+    # --------------------------------------------------------
+
+    if overwrite:
 
         iceberg_table.overwrite(
             arrow_table
@@ -266,42 +568,40 @@ def convert_to_iceberg(table_folder):
 
     else:
 
-        # ----------------------------------------------------
-        # Create new Iceberg table
-        # ----------------------------------------------------
-
-        print()
-        print(
-            "Creating new Iceberg table..."
-        )
-
-        iceberg_table = catalog.create_table(
-            identifier=identifier,
-            schema=arrow_table.schema
-        )
-
-        # ----------------------------------------------------
-        # Write data
-        # ----------------------------------------------------
-
-        print(
-            "Writing data to Iceberg..."
-        )
-
         iceberg_table.append(
             arrow_table
         )
 
-    # --------------------------------------------------------
-    # Reload table
-    # --------------------------------------------------------
 
-    iceberg_table = catalog.load_table(
-        identifier
+    print()
+    print(
+        "Data successfully written to Iceberg."
     )
 
+
+# ============================================================
+# VERIFY ICEBERG TABLE
+# ============================================================
+
+def verify_iceberg_table(
+    identifier
+):
+
+    print()
+    print(
+        "Reading Iceberg table for verification..."
+    )
+
+
+    iceberg_table = (
+        catalog.load_table(
+            identifier
+        )
+    )
+
+
     # --------------------------------------------------------
-    # Read Iceberg table
+    # Scan table
     # --------------------------------------------------------
 
     result_arrow = (
@@ -310,63 +610,325 @@ def convert_to_iceberg(table_folder):
         .to_arrow()
     )
 
-    result_df = result_arrow.to_pandas()
+
+    result_df = (
+        result_arrow
+        .to_pandas()
+    )
+
 
     # --------------------------------------------------------
-    # Display verification
+    # Verification
     # --------------------------------------------------------
 
     print()
     print("-" * 100)
+
     print(
-        f"ICEBERG TABLE VERIFIED: {identifier}"
+        f"ICEBERG TABLE VERIFIED: "
+        f"{identifier}"
     )
+
     print("-" * 100)
 
     print(
-        f"Rows: {len(result_df)}"
+        f"Rows    : "
+        f"{len(result_df)}"
     )
 
     print(
-        f"Columns: {len(result_df.columns)}"
+        f"Columns : "
+        f"{len(result_df.columns)}"
     )
+
+
+    # --------------------------------------------------------
+    # Schema
+    # --------------------------------------------------------
 
     print()
-    print("First 10 rows:")
+    print(
+        "Iceberg Schema:"
+    )
 
     print(
-        result_df.head(10).to_string(
+        iceberg_table.schema()
+    )
+
+
+    # --------------------------------------------------------
+    # First 10 rows
+    # --------------------------------------------------------
+
+    print()
+    print(
+        "First 10 rows:"
+    )
+
+    print(
+        result_df
+        .head(10)
+        .to_string(
             index=False
         )
     )
 
+
     # --------------------------------------------------------
-    # Snapshot information
+    # Snapshots
     # --------------------------------------------------------
-
-    print()
-    print("Snapshots:")
-
-    for snapshot in iceberg_table.snapshots():
-
-        print(
-            f"  Snapshot ID: "
-            f"{snapshot.snapshot_id}"
-        )
-
-        print(
-            f"  Timestamp  : "
-            f"{snapshot.timestamp_ms}"
-        )
-
-        print(
-            f"  Operation  : "
-            f"{snapshot.summary.get('operation')}"
-        )
 
     print()
     print(
-        f"Successfully created Iceberg table: "
+        "Snapshots:"
+    )
+
+    try:
+
+        snapshots = list(
+            iceberg_table.snapshots()
+        )
+
+        if not snapshots:
+
+            print(
+                "  No snapshots found."
+            )
+
+        else:
+
+            for snapshot in snapshots:
+
+                print()
+
+                print(
+                    f"  Snapshot ID: "
+                    f"{snapshot.snapshot_id}"
+                )
+
+                print(
+                    f"  Timestamp  : "
+                    f"{snapshot.timestamp_ms}"
+                )
+
+                try:
+
+                    operation = (
+                        snapshot
+                        .summary
+                        .get(
+                            "operation"
+                        )
+                    )
+
+                except Exception:
+
+                    operation = "N/A"
+
+                print(
+                    f"  Operation  : "
+                    f"{operation}"
+                )
+
+    except Exception as e:
+
+        print(
+            f"  Unable to read snapshots: "
+            f"{e}"
+        )
+
+    return iceberg_table
+
+
+# ============================================================
+# CONVERT ONE DATASET
+# ============================================================
+
+def convert_to_iceberg(
+    table_folder
+):
+
+    table_name = (
+        table_folder.name
+    )
+
+    identifier = (
+        f"{NAMESPACE}.{table_name}"
+    )
+
+
+    print()
+    print("=" * 100)
+
+    print(
+        f"CONVERTING TABLE: "
+        f"{table_name}"
+    )
+
+    print("=" * 100)
+
+
+    # ========================================================
+    # FIND PARQUET
+    # ========================================================
+
+    parquet_files = (
+        find_parquet_files(
+            table_folder
+        )
+    )
+
+
+    if not parquet_files:
+
+        print(
+            f"No Parquet files found for: "
+            f"{table_name}"
+        )
+
+        return
+
+
+    print()
+    print(
+        f"Parquet files found: "
+        f"{len(parquet_files)}"
+    )
+
+
+    for parquet_file in parquet_files:
+
+        print(
+            f"  - {parquet_file}"
+        )
+
+
+    # ========================================================
+    # READ DATA
+    # ========================================================
+
+    df = (
+        read_parquet_files(
+            parquet_files
+        )
+    )
+
+
+    print()
+    print(
+        f"Total rows: "
+        f"{df.height}"
+    )
+
+    print(
+        f"Total columns: "
+        f"{df.width}"
+    )
+
+
+    # ========================================================
+    # PREPARE DATA
+    # ========================================================
+
+    df = (
+        prepare_dataframe(
+            df
+        )
+    )
+
+
+    # ========================================================
+    # DISPLAY COLUMNS
+    # ========================================================
+
+    print()
+    print(
+        "Columns:"
+    )
+
+    for column in df.columns:
+
+        print(
+            f"  - {column}: "
+            f"{df[column].dtype}"
+        )
+
+
+    # ========================================================
+    # CREATE / LOAD ICEBERG TABLE
+    # ========================================================
+
+    table_exists = (
+        catalog.table_exists(
+            identifier
+        )
+    )
+
+
+    if table_exists:
+
+        print()
+        print(
+            "Iceberg table already exists."
+        )
+
+        iceberg_table = (
+            catalog.load_table(
+                identifier
+            )
+        )
+
+        # ----------------------------------------------------
+        # Replace current contents
+        # ----------------------------------------------------
+
+        write_to_iceberg(
+            df,
+            iceberg_table,
+            overwrite=True
+        )
+
+    else:
+
+        print()
+        print(
+            "Iceberg table does not exist."
+        )
+
+        print(
+            "Creating new table..."
+        )
+
+        iceberg_table = (
+            create_iceberg_table(
+                table_name,
+                df
+            )
+        )
+
+        # ----------------------------------------------------
+        # Initial data load
+        # ----------------------------------------------------
+
+        write_to_iceberg(
+            df,
+            iceberg_table,
+            overwrite=False
+        )
+
+
+    # ========================================================
+    # VERIFY
+    # ========================================================
+
+    verify_iceberg_table(
+        identifier
+    )
+
+
+    print()
+    print(
+        f"Successfully processed Iceberg table: "
         f"{identifier}"
     )
 
@@ -384,6 +946,7 @@ def discover_tables():
             f"{CURATED_FOLDER}"
         )
 
+
     table_folders = [
 
         folder
@@ -393,6 +956,7 @@ def discover_tables():
         if folder.is_dir()
 
     ]
+
 
     return sorted(
         table_folders,
@@ -408,23 +972,34 @@ def main():
 
     print()
     print("=" * 100)
-    print("CURATED PARQUET → APACHE ICEBERG")
+
+    print(
+        "CURATED PARQUET → APACHE ICEBERG"
+    )
+
     print("=" * 100)
+
 
     print()
     print(
-        f"Source : {CURATED_FOLDER}"
+        f"Source : "
+        f"{CURATED_FOLDER}"
     )
 
     print(
-        f"Target : {WAREHOUSE_FOLDER}"
+        f"Target : "
+        f"{WAREHOUSE_FOLDER}"
     )
 
-    # --------------------------------------------------------
-    # Discover tables
-    # --------------------------------------------------------
 
-    table_folders = discover_tables()
+    # ========================================================
+    # DISCOVER TABLES
+    # ========================================================
+
+    table_folders = (
+        discover_tables()
+    )
+
 
     if not table_folders:
 
@@ -432,8 +1007,12 @@ def main():
             "No curated table folders found."
         )
 
+
     print()
-    print("Tables discovered:")
+    print(
+        "Tables discovered:"
+    )
+
 
     for folder in table_folders:
 
@@ -441,9 +1020,10 @@ def main():
             f"  - {folder.name}"
         )
 
-    # --------------------------------------------------------
-    # Convert each table
-    # --------------------------------------------------------
+
+    # ========================================================
+    # PROCESS TABLES
+    # ========================================================
 
     for table_folder in table_folders:
 
@@ -456,6 +1036,8 @@ def main():
         except Exception as e:
 
             print()
+            print("=" * 100)
+
             print(
                 f"ERROR processing "
                 f"{table_folder.name}"
@@ -465,39 +1047,64 @@ def main():
                 f"Error: {e}"
             )
 
+            print("=" * 100)
+
             raise
 
-    # --------------------------------------------------------
-    # List Iceberg tables
-    # --------------------------------------------------------
+
+    # ========================================================
+    # LIST TABLES
+    # ========================================================
 
     print()
     print("=" * 100)
-    print("ICEBERG TABLES CREATED")
-    print("=" * 100)
 
-    tables = catalog.list_tables(
-        NAMESPACE
+    print(
+        "ICEBERG TABLES CREATED"
     )
 
-    for table in tables:
+    print("=" * 100)
+
+
+    tables = (
+        catalog.list_tables(
+            NAMESPACE
+        )
+    )
+
+
+    if not tables:
 
         print(
-            f"  - {table}"
+            "No Iceberg tables found."
         )
 
-    # --------------------------------------------------------
-    # Completed
-    # --------------------------------------------------------
+    else:
+
+        for table in tables:
+
+            print(
+                f"  - {table}"
+            )
+
+
+    # ========================================================
+    # COMPLETE
+    # ========================================================
 
     print()
     print("=" * 100)
-    print("CONVERSION COMPLETED")
+
+    print(
+        "CONVERSION COMPLETED"
+    )
+
     print("=" * 100)
+
 
     print()
     print(
-        f"Iceberg Warehouse:"
+        "Iceberg Warehouse:"
     )
 
     print(
