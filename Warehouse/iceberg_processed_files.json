@@ -1,0 +1,17 @@
+{
+    "customers": [
+        "customers/customers.parquet"
+    ],
+    "order_summary": [
+        "order_summary/order_summary.parquet"
+    ],
+    "orders": [
+        "orders/orders.parquet"
+    ],
+    "orders_enriched": [
+        "orders_enriched/orders_enriched.parquet"
+    ],
+    "products": [
+        "products/products.parquet"
+    ]
+}

@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 
 import polars as pl
 
@@ -49,6 +50,16 @@ WAREHOUSE_FOLDER.mkdir(
 
 
 # ============================================================
+# INCREMENTAL PROCESSING METADATA
+# ============================================================
+
+PROCESSED_FILES_METADATA = (
+    WAREHOUSE_FOLDER /
+    "iceberg_processed_files.json"
+)
+
+
+# ============================================================
 # ICEBERG CATALOG
 # ============================================================
 
@@ -67,7 +78,7 @@ NAMESPACE = "default"
 
 
 # ============================================================
-# INITIALIZE ICEBERG CATALOG
+# INITIALIZE APACHE ICEBERG CATALOG
 # ============================================================
 
 print()
@@ -81,6 +92,10 @@ print(
 
 print(
     f"Catalog DB: {CATALOG_DB}"
+)
+
+print(
+    f"Metadata  : {PROCESSED_FILES_METADATA}"
 )
 
 
@@ -118,6 +133,132 @@ except Exception:
 
 
 # ============================================================
+# LOAD PROCESSED FILE METADATA
+# ============================================================
+
+def load_processed_files():
+
+    if not PROCESSED_FILES_METADATA.exists():
+
+        print()
+        print(
+            "No incremental metadata file found."
+        )
+
+        print(
+            "This will be treated as the first run."
+        )
+
+        return {}
+
+
+    try:
+
+        with open(
+            PROCESSED_FILES_METADATA,
+            "r",
+            encoding="utf-8"
+        ) as file:
+
+            data = json.load(file)
+
+
+        if not isinstance(
+            data,
+            dict
+        ):
+
+            print()
+            print(
+                "Invalid metadata format."
+            )
+
+            return {}
+
+
+        print()
+        print(
+            "Incremental metadata loaded."
+        )
+
+        for table_name, files in data.items():
+
+            print(
+                f"  {table_name}: "
+                f"{len(files)} processed file(s)"
+            )
+
+
+        return data
+
+
+    except Exception as e:
+
+        print()
+        print(
+            f"Unable to load metadata: {e}"
+        )
+
+        print(
+            "Starting with empty metadata."
+        )
+
+        return {}
+
+
+# ============================================================
+# SAVE PROCESSED FILE METADATA
+# ============================================================
+
+def save_processed_files(
+    processed_files
+):
+
+    temp_file = (
+        PROCESSED_FILES_METADATA.with_suffix(
+            ".tmp"
+        )
+    )
+
+
+    with open(
+        temp_file,
+        "w",
+        encoding="utf-8"
+    ) as file:
+
+        json.dump(
+            processed_files,
+            file,
+            indent=4
+        )
+
+
+    temp_file.replace(
+        PROCESSED_FILES_METADATA
+    )
+
+
+    print()
+    print(
+        "Incremental metadata saved:"
+    )
+
+    print(
+        PROCESSED_FILES_METADATA
+    )
+
+
+# ============================================================
+# GLOBAL PROCESSED FILE METADATA
+# ============================================================
+
+processed_files_metadata = (
+    load_processed_files()
+)
+
+
+# ============================================================
 # FIND PARQUET FILES
 # ============================================================
 
@@ -133,6 +274,85 @@ def find_parquet_files(
 
 
 # ============================================================
+# GET RELATIVE FILE PATH
+# ============================================================
+
+def get_relative_file_path(
+    parquet_file
+):
+
+    return str(
+        parquet_file
+        .resolve()
+        .relative_to(
+            CURATED_FOLDER.resolve()
+        )
+    ).replace(
+        "\\",
+        "/"
+    )
+
+
+# ============================================================
+# FIND ONLY NEW FILES
+# ============================================================
+
+def find_new_parquet_files(
+    table_name,
+    parquet_files
+):
+
+    already_processed = set(
+        processed_files_metadata.get(
+            table_name,
+            []
+        )
+    )
+
+
+    new_files = []
+
+
+    for parquet_file in parquet_files:
+
+        relative_path = (
+            get_relative_file_path(
+                parquet_file
+            )
+        )
+
+
+        if relative_path in already_processed:
+
+            print()
+            print(
+                f"SKIP - Already processed:"
+            )
+
+            print(
+                f"  {relative_path}"
+            )
+
+        else:
+
+            print()
+            print(
+                f"NEW FILE:"
+            )
+
+            print(
+                f"  {relative_path}"
+            )
+
+            new_files.append(
+                parquet_file
+            )
+
+
+    return new_files
+
+
+# ============================================================
 # READ PARQUET FILES USING POLARS
 # ============================================================
 
@@ -142,6 +362,7 @@ def read_parquet_files(
 
     dataframes = []
 
+
     for parquet_file in parquet_files:
 
         print()
@@ -149,17 +370,26 @@ def read_parquet_files(
             f"Reading: {parquet_file}"
         )
 
+
         df = pl.read_parquet(
             parquet_file
         )
+
 
         print(
             f"Rows read: {df.height}"
         )
 
+
+        print(
+            f"Columns  : {df.width}"
+        )
+
+
         dataframes.append(
             df
         )
+
 
     if not dataframes:
 
@@ -167,9 +397,11 @@ def read_parquet_files(
             "No Parquet files found."
         )
 
+
     if len(dataframes) == 1:
 
         return dataframes[0]
+
 
     return pl.concat(
         dataframes,
@@ -191,20 +423,18 @@ def prepare_dataframe(
 
     remove_columns = []
 
+
     for column in df.columns:
 
         if (
-            column.startswith(
-                "__index"
-            )
-            or column.startswith(
-                "Unnamed:"
-            )
+            column.startswith("__index")
+            or column.startswith("Unnamed:")
         ):
 
             remove_columns.append(
                 column
             )
+
 
     if remove_columns:
 
@@ -213,15 +443,18 @@ def prepare_dataframe(
             "Removing unwanted columns:"
         )
 
+
         for column in remove_columns:
 
             print(
                 f"  - {column}"
             )
 
+
         df = df.drop(
             remove_columns
         )
+
 
     # --------------------------------------------------------
     # Convert Object columns
@@ -232,9 +465,50 @@ def prepare_dataframe(
         if df[column].dtype == pl.Object:
 
             df = df.with_columns(
-                pl.col(column)
-                .cast(pl.String)
+                pl.col(column).cast(
+                    pl.String
+                )
             )
+
+
+    # --------------------------------------------------------
+    # Convert Null columns to nullable String
+    # --------------------------------------------------------
+
+    null_columns = []
+
+
+    for column in df.columns:
+
+        if df[column].dtype == pl.Null:
+
+            null_columns.append(
+                column
+            )
+
+
+    if null_columns:
+
+        print()
+        print(
+            "Converting Null columns to nullable String:"
+        )
+
+
+        for column in null_columns:
+
+            print(
+                f"  - {column}: "
+                f"Null → String"
+            )
+
+
+            df = df.with_columns(
+                pl.col(column).cast(
+                    pl.String
+                )
+            )
+
 
     return df
 
@@ -264,13 +538,16 @@ def polars_dtype_to_iceberg(
 
         return IntegerType()
 
+
     if dtype == pl.Int16:
 
         return IntegerType()
 
+
     if dtype == pl.Int32:
 
         return IntegerType()
+
 
     if dtype == pl.Int64:
 
@@ -285,13 +562,16 @@ def polars_dtype_to_iceberg(
 
         return IntegerType()
 
+
     if dtype == pl.UInt16:
 
         return IntegerType()
 
+
     if dtype == pl.UInt32:
 
         return LongType()
+
 
     if dtype == pl.UInt64:
 
@@ -305,6 +585,7 @@ def polars_dtype_to_iceberg(
     if dtype == pl.Float32:
 
         return FloatType()
+
 
     if dtype == pl.Float64:
 
@@ -378,10 +659,12 @@ def create_iceberg_schema(
 
     field_id = 1
 
+
     print()
     print(
         "Creating Iceberg schema:"
     )
+
 
     for column in df.columns:
 
@@ -389,11 +672,13 @@ def create_iceberg_schema(
             df[column].dtype
         )
 
+
         iceberg_type = (
             polars_dtype_to_iceberg(
                 polars_dtype
             )
         )
+
 
         field = NestedField(
             field_id=field_id,
@@ -402,9 +687,11 @@ def create_iceberg_schema(
             required=False
         )
 
+
         fields.append(
             field
         )
+
 
         print(
             f"  {field_id}. "
@@ -413,11 +700,208 @@ def create_iceberg_schema(
             f"{iceberg_type}"
         )
 
+
         field_id += 1
+
 
     return Schema(
         *fields
     )
+
+
+# ============================================================
+# CHECK ICEBERG SCHEMA COMPATIBILITY
+# ============================================================
+
+def iceberg_schema_matches_dataframe(
+    iceberg_table,
+    df
+):
+
+    print()
+    print(
+        "Checking existing Iceberg schema..."
+    )
+
+
+    existing_schema = (
+        iceberg_table.schema()
+    )
+
+
+    existing_fields = list(
+        existing_schema.fields
+    )
+
+
+    expected_schema = (
+        create_iceberg_schema(
+            df
+        )
+    )
+
+
+    expected_fields = list(
+        expected_schema.fields
+    )
+
+
+    existing_map = {
+
+        field.name:
+        field.field_type
+
+        for field in existing_fields
+
+    }
+
+
+    expected_map = {
+
+        field.name:
+        field.field_type
+
+        for field in expected_fields
+
+    }
+
+
+    compatible = True
+
+
+    # --------------------------------------------------------
+    # Existing fields
+    # --------------------------------------------------------
+
+    existing_names = [
+
+        field.name
+
+        for field in existing_fields
+
+    ]
+
+
+    expected_names = [
+
+        field.name
+
+        for field in expected_fields
+
+    ]
+
+
+    # --------------------------------------------------------
+    # Missing / new columns
+    # --------------------------------------------------------
+
+    missing_in_dataframe = [
+
+        name
+
+        for name in existing_names
+
+        if name not in expected_map
+
+    ]
+
+
+    new_in_dataframe = [
+
+        name
+
+        for name in expected_names
+
+        if name not in existing_map
+
+    ]
+
+
+    if missing_in_dataframe:
+
+        compatible = False
+
+        print()
+        print(
+            "Fields present in Iceberg "
+            "but missing from DataFrame:"
+        )
+
+
+        for name in missing_in_dataframe:
+
+            print(
+                f"  - {name}"
+            )
+
+
+    if new_in_dataframe:
+
+        compatible = False
+
+        print()
+        print(
+            "New fields present in DataFrame:"
+        )
+
+
+        for name in new_in_dataframe:
+
+            print(
+                f"  - {name}"
+            )
+
+
+    # --------------------------------------------------------
+    # Type comparison
+    # --------------------------------------------------------
+
+    for name in expected_names:
+
+        if name not in existing_map:
+
+            continue
+
+
+        existing_type = (
+            existing_map[name]
+        )
+
+
+        expected_type = (
+            expected_map[name]
+        )
+
+
+        if existing_type != expected_type:
+
+            compatible = False
+
+
+            print()
+            print(
+                f"Type mismatch for '{name}': "
+                f"Iceberg={existing_type}, "
+                f"Current={expected_type}"
+            )
+
+
+    if compatible:
+
+        print()
+        print(
+            "Schema is compatible."
+        )
+
+    else:
+
+        print()
+        print(
+            "Schema is NOT compatible."
+        )
+
+
+    return compatible
 
 
 # ============================================================
@@ -433,10 +917,12 @@ def create_iceberg_table(
         f"{NAMESPACE}.{table_name}"
     )
 
+
     print()
     print(
         f"Iceberg table: {identifier}"
     )
+
 
     # --------------------------------------------------------
     # Existing table
@@ -450,6 +936,7 @@ def create_iceberg_table(
         print(
             "Iceberg table already exists."
         )
+
 
         return catalog.load_table(
             identifier
@@ -476,6 +963,7 @@ def create_iceberg_table(
         "Creating Iceberg table..."
     )
 
+
     iceberg_table = (
         catalog.create_table(
             identifier=identifier,
@@ -483,14 +971,12 @@ def create_iceberg_table(
         )
     )
 
+
     print()
     print(
-        "Iceberg table created:"
+        "Iceberg table created."
     )
 
-    print(
-        iceberg_table
-    )
 
     return iceberg_table
 
@@ -503,10 +989,8 @@ def dataframe_to_arrow(
     df
 ):
 
-    # Import only here so the rest of the script can
-    # initialize the Fsspec catalog first.
-
     import pyarrow as pa
+
 
     return pa.Table.from_pandas(
         df.to_pandas(),
@@ -515,32 +999,31 @@ def dataframe_to_arrow(
 
 
 # ============================================================
-# WRITE DATA TO ICEBERG
+# WRITE DATA TO ICEBERG - APPEND ONLY
 # ============================================================
 
 def write_to_iceberg(
     df,
-    iceberg_table,
-    overwrite=False
+    iceberg_table
 ):
 
     print()
+    print(
+        "Appending incremental data to Iceberg..."
+    )
 
-    if overwrite:
 
-        print(
-            "Overwriting Iceberg table..."
-        )
-
-    else:
+    if df.height == 0:
 
         print(
-            "Appending data to Iceberg table..."
+            "No rows to append."
         )
+
+        return
 
 
     # --------------------------------------------------------
-    # Convert Polars → PyArrow
+    # Polars → PyArrow
     # --------------------------------------------------------
 
     arrow_table = (
@@ -557,25 +1040,66 @@ def write_to_iceberg(
 
 
     # --------------------------------------------------------
-    # Write through PyIceberg
+    # APPEND ONLY
     # --------------------------------------------------------
 
-    if overwrite:
-
-        iceberg_table.overwrite(
-            arrow_table
-        )
-
-    else:
-
-        iceberg_table.append(
-            arrow_table
-        )
+    iceberg_table.append(
+        arrow_table
+    )
 
 
     print()
     print(
-        "Data successfully written to Iceberg."
+        "Incremental data successfully appended."
+    )
+
+
+# ============================================================
+# MARK FILES AS PROCESSED
+# ============================================================
+
+def mark_files_as_processed(
+    table_name,
+    parquet_files
+):
+
+    if table_name not in processed_files_metadata:
+
+        processed_files_metadata[
+            table_name
+        ] = []
+
+
+    existing = set(
+        processed_files_metadata[
+            table_name
+        ]
+    )
+
+
+    for parquet_file in parquet_files:
+
+        relative_path = (
+            get_relative_file_path(
+                parquet_file
+            )
+        )
+
+
+        existing.add(
+            relative_path
+        )
+
+
+    processed_files_metadata[
+        table_name
+    ] = sorted(
+        existing
+    )
+
+
+    save_processed_files(
+        processed_files_metadata
     )
 
 
@@ -622,19 +1146,27 @@ def verify_iceberg_table(
     # --------------------------------------------------------
 
     print()
-    print("-" * 100)
+    print(
+        "-" * 100
+    )
+
 
     print(
         f"ICEBERG TABLE VERIFIED: "
         f"{identifier}"
     )
 
-    print("-" * 100)
+
+    print(
+        "-" * 100
+    )
+
 
     print(
         f"Rows    : "
         f"{len(result_df)}"
     )
+
 
     print(
         f"Columns : "
@@ -651,6 +1183,7 @@ def verify_iceberg_table(
         "Iceberg Schema:"
     )
 
+
     print(
         iceberg_table.schema()
     )
@@ -665,13 +1198,22 @@ def verify_iceberg_table(
         "First 10 rows:"
     )
 
-    print(
-        result_df
-        .head(10)
-        .to_string(
-            index=False
+
+    if len(result_df) > 0:
+
+        print(
+            result_df
+            .head(10)
+            .to_string(
+                index=False
+            )
         )
-    )
+
+    else:
+
+        print(
+            "No rows found."
+        )
 
 
     # --------------------------------------------------------
@@ -683,11 +1225,13 @@ def verify_iceberg_table(
         "Snapshots:"
     )
 
+
     try:
 
         snapshots = list(
             iceberg_table.snapshots()
         )
+
 
         if not snapshots:
 
@@ -701,15 +1245,18 @@ def verify_iceberg_table(
 
                 print()
 
+
                 print(
                     f"  Snapshot ID: "
                     f"{snapshot.snapshot_id}"
                 )
 
+
                 print(
                     f"  Timestamp  : "
                     f"{snapshot.timestamp_ms}"
                 )
+
 
                 try:
 
@@ -725,10 +1272,12 @@ def verify_iceberg_table(
 
                     operation = "N/A"
 
+
                 print(
                     f"  Operation  : "
                     f"{operation}"
                 )
+
 
     except Exception as e:
 
@@ -737,11 +1286,12 @@ def verify_iceberg_table(
             f"{e}"
         )
 
+
     return iceberg_table
 
 
 # ============================================================
-# CONVERT ONE DATASET
+# CONVERT ONE DATASET - INCREMENTAL
 # ============================================================
 
 def convert_to_iceberg(
@@ -752,6 +1302,7 @@ def convert_to_iceberg(
         table_folder.name
     )
 
+
     identifier = (
         f"{NAMESPACE}.{table_name}"
     )
@@ -760,16 +1311,18 @@ def convert_to_iceberg(
     print()
     print("=" * 100)
 
+
     print(
-        f"CONVERTING TABLE: "
+        f"PROCESSING TABLE: "
         f"{table_name}"
     )
+
 
     print("=" * 100)
 
 
     # ========================================================
-    # FIND PARQUET
+    # FIND ALL PARQUET FILES
     # ========================================================
 
     parquet_files = (
@@ -781,6 +1334,7 @@ def convert_to_iceberg(
 
     if not parquet_files:
 
+        print()
         print(
             f"No Parquet files found for: "
             f"{table_name}"
@@ -791,37 +1345,84 @@ def convert_to_iceberg(
 
     print()
     print(
-        f"Parquet files found: "
+        f"Total Parquet files found: "
         f"{len(parquet_files)}"
     )
 
 
-    for parquet_file in parquet_files:
+    # ========================================================
+    # FIND ONLY NEW FILES
+    # ========================================================
+
+    new_files = (
+        find_new_parquet_files(
+            table_name,
+            parquet_files
+        )
+    )
+
+
+    # ========================================================
+    # NO NEW FILES
+    # ========================================================
+
+    if not new_files:
+
+        print()
+        print("=" * 100)
 
         print(
-            f"  - {parquet_file}"
+            f"NO NEW FILES FOR: "
+            f"{table_name}"
+        )
+
+        print(
+            "Nothing to append to Iceberg."
+        )
+
+        print("=" * 100)
+
+        return
+
+
+    # ========================================================
+    # DISPLAY NEW FILES
+    # ========================================================
+
+    print()
+    print(
+        "New files to process:"
+    )
+
+
+    for parquet_file in new_files:
+
+        print(
+            f"  - "
+            f"{get_relative_file_path(parquet_file)}"
         )
 
 
     # ========================================================
-    # READ DATA
+    # READ ONLY NEW FILES
     # ========================================================
 
     df = (
         read_parquet_files(
-            parquet_files
+            new_files
         )
     )
 
 
     print()
     print(
-        f"Total rows: "
+        f"Incremental rows: "
         f"{df.height}"
     )
 
+
     print(
-        f"Total columns: "
+        f"Incremental columns: "
         f"{df.width}"
     )
 
@@ -846,6 +1447,7 @@ def convert_to_iceberg(
         "Columns:"
     )
 
+
     for column in df.columns:
 
         print(
@@ -855,7 +1457,7 @@ def convert_to_iceberg(
 
 
     # ========================================================
-    # CREATE / LOAD ICEBERG TABLE
+    # CHECK ICEBERG TABLE
     # ========================================================
 
     table_exists = (
@@ -865,39 +1467,22 @@ def convert_to_iceberg(
     )
 
 
-    if table_exists:
+    # ========================================================
+    # FIRST LOAD
+    # ========================================================
 
-        print()
-        print(
-            "Iceberg table already exists."
-        )
-
-        iceberg_table = (
-            catalog.load_table(
-                identifier
-            )
-        )
-
-        # ----------------------------------------------------
-        # Replace current contents
-        # ----------------------------------------------------
-
-        write_to_iceberg(
-            df,
-            iceberg_table,
-            overwrite=True
-        )
-
-    else:
+    if not table_exists:
 
         print()
         print(
             "Iceberg table does not exist."
         )
 
+
         print(
-            "Creating new table..."
+            "Creating new Iceberg table..."
         )
+
 
         iceberg_table = (
             create_iceberg_table(
@@ -906,15 +1491,104 @@ def convert_to_iceberg(
             )
         )
 
+
         # ----------------------------------------------------
-        # Initial data load
+        # Initial append
         # ----------------------------------------------------
 
         write_to_iceberg(
             df,
-            iceberg_table,
-            overwrite=False
+            iceberg_table
         )
+
+
+    # ========================================================
+    # INCREMENTAL LOAD
+    # ========================================================
+
+    else:
+
+        print()
+        print(
+            "Iceberg table already exists."
+        )
+
+
+        iceberg_table = (
+            catalog.load_table(
+                identifier
+            )
+        )
+
+
+        # ----------------------------------------------------
+        # Validate schema
+        # ----------------------------------------------------
+
+        schema_compatible = (
+            iceberg_schema_matches_dataframe(
+                iceberg_table,
+                df
+            )
+        )
+
+
+        if not schema_compatible:
+
+            print()
+            print("=" * 100)
+
+            print(
+                "ERROR: INCREMENTAL SCHEMA MISMATCH"
+            )
+
+            print("=" * 100)
+
+            print()
+            print(
+                f"Table: {identifier}"
+            )
+
+            print()
+            print(
+                "The new curated file does not "
+                "match the existing Iceberg schema."
+            )
+
+            print()
+            print(
+                "No data was appended."
+            )
+
+            print()
+            print(
+                "The file will NOT be marked as processed."
+            )
+
+            raise Exception(
+                f"Schema mismatch for "
+                f"{identifier}"
+            )
+
+
+        # ----------------------------------------------------
+        # Append incremental data
+        # ----------------------------------------------------
+
+        write_to_iceberg(
+            df,
+            iceberg_table
+        )
+
+
+    # ========================================================
+    # MARK FILES AS PROCESSED
+    # ========================================================
+
+    mark_files_as_processed(
+        table_name,
+        new_files
+    )
 
 
     # ========================================================
@@ -927,10 +1601,28 @@ def convert_to_iceberg(
 
 
     print()
+    print("=" * 100)
+
+
     print(
-        f"Successfully processed Iceberg table: "
+        f"SUCCESSFULLY PROCESSED: "
         f"{identifier}"
     )
+
+
+    print(
+        f"New files processed: "
+        f"{len(new_files)}"
+    )
+
+
+    print(
+        f"New rows appended: "
+        f"{df.height}"
+    )
+
+
+    print("=" * 100)
 
 
 # ============================================================
@@ -977,6 +1669,10 @@ def main():
         "CURATED PARQUET → APACHE ICEBERG"
     )
 
+    print(
+        "INCREMENTAL FILE PROCESSING"
+    )
+
     print("=" * 100)
 
 
@@ -986,9 +1682,21 @@ def main():
         f"{CURATED_FOLDER}"
     )
 
+
     print(
         f"Target : "
         f"{WAREHOUSE_FOLDER}"
+    )
+
+
+    print()
+    print(
+        f"Processed file metadata:"
+    )
+
+
+    print(
+        PROCESSED_FILES_METADATA
     )
 
 
@@ -1038,30 +1746,36 @@ def main():
             print()
             print("=" * 100)
 
+
             print(
                 f"ERROR processing "
                 f"{table_folder.name}"
             )
 
+
             print(
                 f"Error: {e}"
             )
 
+
             print("=" * 100)
+
 
             raise
 
 
     # ========================================================
-    # LIST TABLES
+    # LIST ICEBERG TABLES
     # ========================================================
 
     print()
     print("=" * 100)
 
+
     print(
-        "ICEBERG TABLES CREATED"
+        "ICEBERG TABLES"
     )
+
 
     print("=" * 100)
 
@@ -1089,15 +1803,17 @@ def main():
 
 
     # ========================================================
-    # COMPLETE
+    # FINAL STATUS
     # ========================================================
 
     print()
     print("=" * 100)
 
+
     print(
-        "CONVERSION COMPLETED"
+        "INCREMENTAL CONVERSION COMPLETED"
     )
+
 
     print("=" * 100)
 
@@ -1107,8 +1823,20 @@ def main():
         "Iceberg Warehouse:"
     )
 
+
     print(
         WAREHOUSE_FOLDER
+    )
+
+
+    print()
+    print(
+        "Processed-file metadata:"
+    )
+
+
+    print(
+        PROCESSED_FILES_METADATA
     )
 
 

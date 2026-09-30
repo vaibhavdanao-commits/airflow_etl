@@ -1,0 +1,894 @@
+import sys
+from awsglue.context import GlueContext
+from awsglue.job import Job
+from awsglue.utils import getResolvedOptions
+from pyspark.context import SparkContext
+from pyspark.sql import functions as F
+from pyspark.sql.types import (
+    StringType,
+    IntegerType,
+    DoubleType,
+    DateType
+)
+
+
+# ============================================================
+# JOB PARAMETERS
+# ============================================================
+
+args = getResolvedOptions(
+    sys.argv,
+    [
+        "JOB_NAME",
+        "SOURCE_BUCKET",
+        "SOURCE_KEY",
+        "DATASET_TYPE"
+    ]
+)
+
+JOB_NAME = args["JOB_NAME"]
+SOURCE_BUCKET = args["SOURCE_BUCKET"]
+SOURCE_KEY = args["SOURCE_KEY"]
+DATASET_TYPE = args["DATASET_TYPE"].lower()
+
+SOURCE_PATH = f"s3://{SOURCE_BUCKET}/{SOURCE_KEY}"
+
+RAW_PREFIX = "raw"
+PROCESSED_PREFIX = "processed"
+CURATED_PREFIX = "curated"
+QUARANTINE_PREFIX = "quarantine"
+
+
+# ============================================================
+# SPARK / GLUE INITIALIZATION
+# ============================================================
+
+sc = SparkContext()
+glueContext = GlueContext(sc)
+spark = glueContext.spark_session
+
+job = Job(glueContext)
+job.init(JOB_NAME, args)
+
+
+print("=" * 80)
+print("RETAIL GENERIC ETL JOB STARTED")
+print("=" * 80)
+
+print(f"Source Bucket : {SOURCE_BUCKET}")
+print(f"Source Key    : {SOURCE_KEY}")
+print(f"Dataset Type  : {DATASET_TYPE}")
+print(f"Source Path   : {SOURCE_PATH}")
+
+
+# ============================================================
+# UTILITY FUNCTIONS
+# ============================================================
+
+def clean_column_names(df):
+
+    for column in df.columns:
+
+        new_name = (
+            column.strip()
+            .lower()
+            .replace(" ", "_")
+            .replace("-", "_")
+        )
+
+        df = df.withColumnRenamed(column, new_name)
+
+    return df
+
+
+def write_processed(df, dataset):
+
+    output_path = (
+        f"s3://{SOURCE_BUCKET}/"
+        f"{PROCESSED_PREFIX}/"
+        f"{dataset}/"
+    )
+
+    print(f"Writing processed data to: {output_path}")
+
+    (
+        df.write
+        .mode("append")
+        .option("header", "true")
+        .parquet(output_path)
+    )
+
+
+def write_curated(df, dataset):
+
+    output_path = (
+        f"s3://{SOURCE_BUCKET}/"
+        f"{CURATED_PREFIX}/"
+        f"{dataset}/"
+    )
+
+    print(f"Writing curated data to: {output_path}")
+
+    (
+        df.write
+        .mode("append")
+        .option("header", "true")
+        .parquet(output_path)
+    )
+
+
+def write_quarantine(df, dataset):
+
+    if df.rdd.isEmpty():
+
+        print(f"No invalid records for {dataset}")
+
+        return
+
+    output_path = (
+        f"s3://{SOURCE_BUCKET}/"
+        f"{QUARANTINE_PREFIX}/"
+        f"{dataset}/"
+    )
+
+    print(f"Writing invalid records to: {output_path}")
+
+    (
+        df.write
+        .mode("append")
+        .option("header", "true")
+        .parquet(output_path)
+    )
+
+
+def require_columns(df, required_columns):
+
+    missing = [
+        column
+        for column in required_columns
+        if column not in df.columns
+    ]
+
+    if missing:
+
+        raise Exception(
+            f"Missing required columns: {missing}"
+        )
+
+
+# ============================================================
+# READ RAW DATA
+# ============================================================
+
+print()
+print("Reading raw CSV...")
+
+df = (
+    spark.read
+    .option("header", "true")
+    .option("inferSchema", "false")
+    .csv(SOURCE_PATH)
+)
+
+
+print(f"Initial Record Count: {df.count()}")
+
+print("Raw Schema:")
+df.printSchema()
+
+
+# ============================================================
+# STANDARDIZE COLUMN NAMES
+# ============================================================
+
+df = clean_column_names(df)
+
+print("Standardized Columns:")
+print(df.columns)
+
+
+# ============================================================
+# CUSTOMER ETL
+# ============================================================
+
+if DATASET_TYPE == "customers":
+
+    print()
+    print("=" * 80)
+    print("CUSTOMER ETL")
+    print("=" * 80)
+
+    required_columns = [
+        "customer_id",
+        "name",
+        "email",
+        "city",
+        "state",
+        "signup_date",
+        "customer_segment"
+    ]
+
+    require_columns(df, required_columns)
+
+    # --------------------------------------------------------
+    # Data Type Conversion
+    # --------------------------------------------------------
+
+    df = (
+        df
+        .withColumn(
+            "customer_id",
+            F.col("customer_id").cast(IntegerType())
+        )
+        .withColumn(
+            "name",
+            F.trim(F.col("name"))
+        )
+        .withColumn(
+            "email",
+            F.lower(F.trim(F.col("email")))
+        )
+        .withColumn(
+            "city",
+            F.trim(F.col("city"))
+        )
+        .withColumn(
+            "state",
+            F.upper(F.trim(F.col("state")))
+        )
+        .withColumn(
+            "signup_date",
+            F.to_date(
+                F.col("signup_date"),
+                "yyyy-MM-dd"
+            )
+        )
+        .withColumn(
+            "customer_segment",
+            F.upper(
+                F.trim(F.col("customer_segment"))
+            )
+        )
+    )
+
+
+    # --------------------------------------------------------
+    # Email Validation
+    # --------------------------------------------------------
+
+    email_pattern = r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"
+
+    invalid_df = df.filter(
+        F.col("customer_id").isNull()
+        |
+        F.col("email").isNull()
+        |
+        ~F.col("email").rlike(email_pattern)
+    )
+
+    valid_df = df.filter(
+        F.col("customer_id").isNotNull()
+        &
+        F.col("email").isNotNull()
+        &
+        F.col("email").rlike(email_pattern)
+    )
+
+
+    # --------------------------------------------------------
+    # Remove Duplicates
+    # --------------------------------------------------------
+
+    duplicate_free_df = valid_df.dropDuplicates(
+        ["customer_id"]
+    )
+
+
+    # --------------------------------------------------------
+    # Write Invalid Customers
+    # --------------------------------------------------------
+
+    write_quarantine(
+        invalid_df,
+        "customers"
+    )
+
+
+    # --------------------------------------------------------
+    # Write Processed Customers
+    # --------------------------------------------------------
+
+    write_processed(
+        duplicate_free_df,
+        "customers"
+    )
+
+
+    # --------------------------------------------------------
+    # Curated Customers
+    # --------------------------------------------------------
+
+    curated_df = (
+        duplicate_free_df
+        .withColumn(
+            "customer_name",
+            F.initcap(F.col("name"))
+        )
+        .withColumn(
+            "processed_timestamp",
+            F.current_timestamp()
+        )
+    )
+
+
+    write_curated(
+        curated_df,
+        "customers"
+    )
+
+
+# ============================================================
+# PRODUCT ETL
+# ============================================================
+
+elif DATASET_TYPE == "products":
+
+    print()
+    print("=" * 80)
+    print("PRODUCT ETL")
+    print("=" * 80)
+
+    required_columns = [
+        "product_id",
+        "product_name",
+        "category",
+        "price",
+        "supplier"
+    ]
+
+    require_columns(df, required_columns)
+
+
+    # --------------------------------------------------------
+    # Data Type Conversion
+    # --------------------------------------------------------
+
+    df = (
+        df
+        .withColumn(
+            "product_id",
+            F.col("product_id").cast(IntegerType())
+        )
+        .withColumn(
+            "product_name",
+            F.trim(F.col("product_name"))
+        )
+        .withColumn(
+            "category",
+            F.upper(
+                F.trim(F.col("category"))
+            )
+        )
+        .withColumn(
+            "price",
+            F.col("price").cast(DoubleType())
+        )
+        .withColumn(
+            "supplier",
+            F.trim(F.col("supplier"))
+        )
+    )
+
+
+    # --------------------------------------------------------
+    # Data Quality
+    # --------------------------------------------------------
+
+    invalid_df = df.filter(
+        F.col("product_id").isNull()
+        |
+        F.col("product_name").isNull()
+        |
+        F.col("price").isNull()
+        |
+        (F.col("price") < 0)
+    )
+
+
+    valid_df = df.filter(
+        F.col("product_id").isNotNull()
+        &
+        F.col("product_name").isNotNull()
+        &
+        F.col("price").isNotNull()
+        &
+        (F.col("price") >= 0)
+    )
+
+
+    # --------------------------------------------------------
+    # Duplicate Removal
+    # --------------------------------------------------------
+
+    valid_df = valid_df.dropDuplicates(
+        ["product_id"]
+    )
+
+
+    # --------------------------------------------------------
+    # Quarantine
+    # --------------------------------------------------------
+
+    write_quarantine(
+        invalid_df,
+        "products"
+    )
+
+
+    # --------------------------------------------------------
+    # Processed
+    # --------------------------------------------------------
+
+    write_processed(
+        valid_df,
+        "products"
+    )
+
+
+    # --------------------------------------------------------
+    # Curated
+    # --------------------------------------------------------
+
+    curated_df = (
+        valid_df
+        .withColumn(
+            "product_name",
+            F.initcap(F.col("product_name"))
+        )
+        .withColumn(
+            "processed_timestamp",
+            F.current_timestamp()
+        )
+    )
+
+
+    write_curated(
+        curated_df,
+        "products"
+    )
+
+
+# ============================================================
+# ORDERS ETL
+# ============================================================
+
+elif DATASET_TYPE == "orders":
+
+    print()
+    print("=" * 80)
+    print("ORDERS ETL")
+    print("=" * 80)
+
+    required_columns = [
+        "order_id",
+        "customer_id",
+        "product_id",
+        "order_date",
+        "quantity",
+        "unit_price",
+        "payment_method",
+        "order_status",
+        "store_id"
+    ]
+
+    require_columns(df, required_columns)
+
+
+    # --------------------------------------------------------
+    # Data Type Conversion
+    # --------------------------------------------------------
+
+    df = (
+        df
+        .withColumn(
+            "order_id",
+            F.col("order_id").cast(IntegerType())
+        )
+        .withColumn(
+            "customer_id",
+            F.col("customer_id").cast(IntegerType())
+        )
+        .withColumn(
+            "product_id",
+            F.col("product_id").cast(IntegerType())
+        )
+        .withColumn(
+            "order_date",
+            F.to_date(
+                F.col("order_date"),
+                "yyyy-MM-dd"
+            )
+        )
+        .withColumn(
+            "quantity",
+            F.col("quantity").cast(IntegerType())
+        )
+        .withColumn(
+            "unit_price",
+            F.col("unit_price").cast(DoubleType())
+        )
+        .withColumn(
+            "payment_method",
+            F.upper(
+                F.trim(F.col("payment_method"))
+            )
+        )
+        .withColumn(
+            "order_status",
+            F.upper(
+                F.trim(F.col("order_status"))
+            )
+        )
+        .withColumn(
+            "store_id",
+            F.trim(F.col("store_id"))
+        )
+    )
+
+
+    # --------------------------------------------------------
+    # Order Data Quality
+    # --------------------------------------------------------
+
+    invalid_df = df.filter(
+        F.col("order_id").isNull()
+        |
+        F.col("customer_id").isNull()
+        |
+        F.col("product_id").isNull()
+        |
+        F.col("order_date").isNull()
+        |
+        F.col("quantity").isNull()
+        |
+        (F.col("quantity") <= 0)
+        |
+        F.col("unit_price").isNull()
+        |
+        (F.col("unit_price") < 0)
+    )
+
+
+    valid_df = df.filter(
+        F.col("order_id").isNotNull()
+        &
+        F.col("customer_id").isNotNull()
+        &
+        F.col("product_id").isNotNull()
+        &
+        F.col("order_date").isNotNull()
+        &
+        F.col("quantity").isNotNull()
+        &
+        (F.col("quantity") > 0)
+        &
+        F.col("unit_price").isNotNull()
+        &
+        (F.col("unit_price") >= 0)
+    )
+
+
+    # --------------------------------------------------------
+    # Duplicate Removal
+    # --------------------------------------------------------
+
+    valid_df = valid_df.dropDuplicates(
+        ["order_id"]
+    )
+
+
+    # --------------------------------------------------------
+    # Read Customer Reference Data
+    # --------------------------------------------------------
+
+    customers_path = (
+        f"s3://{SOURCE_BUCKET}/"
+        f"{RAW_PREFIX}/customers/"
+    )
+
+    customers_df = (
+        spark.read
+        .option("header", "true")
+        .csv(customers_path)
+    )
+
+    customers_df = clean_column_names(
+        customers_df
+    )
+
+    customers_df = customers_df.select(
+        F.col("customer_id").cast(IntegerType()).alias(
+            "ref_customer_id"
+        )
+    ).dropDuplicates()
+
+
+    # --------------------------------------------------------
+    # Read Product Reference Data
+    # --------------------------------------------------------
+
+    products_path = (
+        f"s3://{SOURCE_BUCKET}/"
+        f"{RAW_PREFIX}/products/"
+    )
+
+    products_df = (
+        spark.read
+        .option("header", "true")
+        .csv(products_path)
+    )
+
+    products_df = clean_column_names(
+        products_df
+    )
+
+    products_df = products_df.select(
+        F.col("product_id").cast(IntegerType()).alias(
+            "ref_product_id"
+        )
+    ).dropDuplicates()
+
+
+    # --------------------------------------------------------
+    # Customer Validation
+    # --------------------------------------------------------
+
+    customer_join = (
+        valid_df
+        .join(
+            customers_df,
+            valid_df.customer_id
+            == customers_df.ref_customer_id,
+            "left"
+        )
+    )
+
+
+    # --------------------------------------------------------
+    # Product Validation
+    # --------------------------------------------------------
+
+    customer_product_join = (
+        customer_join
+        .join(
+            products_df,
+            customer_join.product_id
+            == products_df.ref_product_id,
+            "left"
+        )
+    )
+
+
+    # --------------------------------------------------------
+    # Invalid Foreign Keys
+    # --------------------------------------------------------
+
+    fk_invalid_df = (
+        customer_product_join
+        .filter(
+            F.col("ref_customer_id").isNull()
+            |
+            F.col("ref_product_id").isNull()
+        )
+    )
+
+
+    # --------------------------------------------------------
+    # Valid Orders
+    # --------------------------------------------------------
+
+    valid_orders_df = (
+        customer_product_join
+        .filter(
+            F.col("ref_customer_id").isNotNull()
+            &
+            F.col("ref_product_id").isNotNull()
+        )
+        .drop(
+            "ref_customer_id",
+            "ref_product_id"
+        )
+    )
+
+
+    # --------------------------------------------------------
+    # Combine All Invalid Orders
+    # --------------------------------------------------------
+
+    all_invalid_orders = (
+        invalid_df
+        .withColumn(
+            "dq_reason",
+            F.lit("Schema or business validation failed")
+        )
+    )
+
+
+    fk_invalid_df = (
+        fk_invalid_df
+        .drop(
+            "ref_customer_id",
+            "ref_product_id"
+        )
+        .withColumn(
+            "dq_reason",
+            F.lit(
+                "Customer ID or Product ID does not exist"
+            )
+        )
+    )
+
+
+    # --------------------------------------------------------
+    # Quarantine
+    # --------------------------------------------------------
+
+    quarantine_orders = (
+        all_invalid_orders
+        .unionByName(
+            fk_invalid_df,
+            allowMissingColumns=True
+        )
+    )
+
+
+    write_quarantine(
+        quarantine_orders,
+        "orders"
+    )
+
+
+    # --------------------------------------------------------
+    # Derived Column
+    # --------------------------------------------------------
+
+    curated_orders = (
+        valid_orders_df
+        .withColumn(
+            "order_amount",
+            F.round(
+                F.col("quantity")
+                * F.col("unit_price"),
+                2
+            )
+        )
+        .withColumn(
+            "order_year",
+            F.year(F.col("order_date"))
+        )
+        .withColumn(
+            "order_month",
+            F.month(F.col("order_date"))
+        )
+        .withColumn(
+            "processed_timestamp",
+            F.current_timestamp()
+        )
+    )
+
+
+    # --------------------------------------------------------
+    # Processed Orders
+    # --------------------------------------------------------
+
+    write_processed(
+        curated_orders,
+        "orders"
+    )
+
+
+    # --------------------------------------------------------
+    # Curated Orders
+    # --------------------------------------------------------
+
+    write_curated(
+        curated_orders,
+        "orders"
+    )
+
+
+    # ========================================================
+    # AGGREGATION
+    # ========================================================
+
+    print()
+    print("Creating order aggregation...")
+
+    order_summary = (
+        curated_orders
+        .groupBy(
+            "order_date",
+            "order_status"
+        )
+        .agg(
+            F.count("order_id").alias(
+                "total_orders"
+            ),
+            F.sum("quantity").alias(
+                "total_quantity"
+            ),
+            F.round(
+                F.sum("order_amount"),
+                2
+            ).alias(
+                "total_order_amount"
+            )
+        )
+    )
+
+
+    aggregation_path = (
+        f"s3://{SOURCE_BUCKET}/"
+        f"{CURATED_PREFIX}/"
+        f"order_summary/"
+    )
+
+
+    order_summary.write \
+        .mode("append") \
+        .parquet(aggregation_path)
+
+
+# ============================================================
+# ORDERS ENRICHED
+# ============================================================
+
+elif DATASET_TYPE == "orders_enriched":
+
+    print()
+    print("=" * 80)
+    print("ORDERS ENRICHED ETL")
+    print("=" * 80)
+
+    df = (
+        df
+        .withColumn(
+            "processed_timestamp",
+            F.current_timestamp()
+        )
+    )
+
+    df = df.dropDuplicates()
+
+    write_processed(
+        df,
+        "orders_enriched"
+    )
+
+    write_curated(
+        df,
+        "orders_enriched"
+    )
+
+
+# ============================================================
+# UNSUPPORTED DATASET
+# ============================================================
+
+else:
+
+    raise Exception(
+        f"Unsupported dataset type: {DATASET_TYPE}"
+    )
+
+
+# ============================================================
+# JOB COMPLETION
+# ============================================================
+
+print()
+print("=" * 80)
+print("RETAIL GENERIC ETL JOB COMPLETED")
+print("=" * 80)
+
+job.commit()
