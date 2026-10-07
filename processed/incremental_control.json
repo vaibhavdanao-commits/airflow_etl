@@ -2,8 +2,8 @@
     "datasets": {
         "customers": {
             "last_processed_time": "2026-10-07T14:53:53.009645",
-            "last_run_time": "2026-10-07T14:54:17.763168",
-            "records_processed": 1,
+            "last_run_time": "2026-10-07T15:27:09.781341",
+            "records_processed": 5,
             "processed_files": {
                 "2022-01-03/customers.csv": {
                     "modified_time": "2026-09-30T17:31:51.152604",
@@ -4564,26 +4564,62 @@
                     "modified_time_ns": 1791365033009644700,
                     "size": 147,
                     "processed_at": "2026-10-07T14:54:17.763147"
+                },
+                "2022-01-03 copy/customers.csv": {
+                    "modified_time": "2026-09-30T17:31:51.152604",
+                    "modified_time_ns": 1790769711152604100,
+                    "size": 403,
+                    "processed_at": "2026-10-07T15:24:11.052280"
+                },
+                "2022-10-20/customers.csv": {
+                    "modified_time": "2026-09-30T17:31:51.152604",
+                    "modified_time_ns": 1790769711152604100,
+                    "size": 403,
+                    "processed_at": "2026-10-07T15:27:09.781295"
+                },
+                "2026-08-30 copy/customers.csv": {
+                    "modified_time": "2026-10-07T14:53:53.009645",
+                    "modified_time_ns": 1791365033009644700,
+                    "size": 147,
+                    "processed_at": "2026-10-07T15:27:09.781330"
                 }
             }
         },
         "products": {
-            "last_processed_time": "2026-09-30T17:31:57.666160",
-            "last_run_time": "2026-09-30T17:32:58.215700",
+            "last_processed_time": "2026-10-07T15:51:15.225141",
+            "last_run_time": "2026-10-07T15:54:48.996707",
             "records_processed": 200,
             "processed_files": {
                 "products.csv": {
-                    "modified_time": "2026-09-30T17:31:57.666160",
-                    "modified_time_ns": 1790769717666160200,
-                    "size": 11046,
-                    "processed_at": "2026-09-30T17:32:58.215622"
+                    "modified_time": "2026-10-07T15:51:15.225141",
+                    "modified_time_ns": 1791368475225141100,
+                    "size": 11101,
+                    "processed_at": "2026-10-07T15:51:40.936313"
+                },
+                "products copy.csv": {
+                    "modified_time": "2026-10-07T15:51:15.225141",
+                    "modified_time_ns": 1791368475225141100,
+                    "size": 11101,
+                    "processed_at": "2026-10-07T15:51:40.936276"
+                },
+                "products1.csv": {
+                    "modified_time": "2026-10-07T15:51:15.225141",
+                    "modified_time_ns": 1791368475225141100,
+                    "size": 11101,
+                    "processed_at": "2026-10-07T15:53:41.836852"
+                },
+                "products - Copy.csv": {
+                    "modified_time": "2026-10-07T15:51:15.225141",
+                    "modified_time_ns": 1791368475225141100,
+                    "size": 11101,
+                    "processed_at": "2026-10-07T15:54:48.996694"
                 }
             }
         },
         "orders": {
-            "last_processed_time": "2026-09-30T17:31:55.323462",
-            "last_run_time": "2026-09-30T17:33:03.965625",
-            "records_processed": 50000,
+            "last_processed_time": "2026-09-30T17:31:53.676199",
+            "last_run_time": "2026-10-07T15:44:23.579712",
+            "records_processed": 75,
             "processed_files": {
                 "2025-01-01/orders.csv": {
                     "modified_time": "2026-09-30T17:31:53.676199",
@@ -8226,6 +8262,12 @@
                     "modified_time_ns": 1790769715323462100,
                     "size": 6523,
                     "processed_at": "2026-09-30T17:33:03.965607"
+                },
+                "2025-01-01 copy/orders.csv": {
+                    "modified_time": "2026-09-30T17:31:53.676199",
+                    "modified_time_ns": 1790769713676199400,
+                    "size": 6442,
+                    "processed_at": "2026-10-07T15:44:23.579696"
                 }
             }
         },
