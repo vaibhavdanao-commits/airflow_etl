@@ -1,8 +1,8 @@
 {
     "datasets": {
         "customers": {
-            "last_processed_time": "2026-09-30T17:31:53.528386",
-            "last_run_time": "2026-09-30T18:04:02.004014",
+            "last_processed_time": "2026-10-07T14:53:53.009645",
+            "last_run_time": "2026-10-07T14:54:17.763168",
             "records_processed": 1,
             "processed_files": {
                 "2022-01-03/customers.csv": {
@@ -4558,6 +4558,12 @@
                     "modified_time_ns": 1790769713528386400,
                     "size": 146,
                     "processed_at": "2026-09-30T18:04:02.003935"
+                },
+                "2026-08-30/customers.csv": {
+                    "modified_time": "2026-10-07T14:53:53.009645",
+                    "modified_time_ns": 1791365033009644700,
+                    "size": 147,
+                    "processed_at": "2026-10-07T14:54:17.763147"
                 }
             }
         },

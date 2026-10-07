@@ -1075,23 +1075,6 @@ def scd2_build_customer(
         .cast(pl.Int32),
     )
 
-    # =========================================================================
-    # DETECT BAD INITIAL LOAD FROM PREVIOUS SCRIPT
-    # =========================================================================
-    #
-    # Your previous execution created:
-    #
-    # effective_from = 2026-10-05
-    #
-    # for all customers.
-    #
-    # Since historical orders exist before that date,
-    # this is invalid for the fact lookup.
-    #
-    # Detect that situation and rebuild the initial
-    # SCD2 table using the earliest order date.
-    #
-    # =========================================================================
 
     history_count = (
         existing
@@ -1975,22 +1958,7 @@ def build_fact_sales(
         )
     )
 
-    # -------------------------------------------------------------------------
-    # IMPORTANT:
-    #
-    # customer_id can have multiple SCD2 versions.
-    #
-    # Example:
-    #
-    # customer_id | customer_key | effective_from | effective_to
-    #
-    # 101         | 1            | 2025-02-01     | 2026-07-04
-    # 101         | 1001         | 2026-07-05     | 9999-12-31
-    #
-    # Joining on customer_id creates multiple rows.
-    # The date filter below keeps only the version
-    # valid for the order date.
-    # -------------------------------------------------------------------------
+   
 
     orders_with_customer = (
         orders.join(
@@ -2261,22 +2229,6 @@ def build_fact_sales(
             .cast(pl.Float64)
         )
 
-    # =========================================================================
-    # CREATE FACT
-    # =========================================================================
-    #
-    # EXACT FACT STRUCTURE:
-    #
-    # sale_id
-    # customer_key
-    # product_key
-    # store_key
-    # date_key
-    # quantity
-    # sales_amount
-    # discount
-    #
-    # =========================================================================
 
     fact = (
         orders_with_customer
@@ -2907,38 +2859,7 @@ def main():
         "order_date",
     )
 
-    # =========================================================================
-    # DETERMINE INITIAL SCD2 DATE
-    # =========================================================================
-    #
-    # THIS IS THE IMPORTANT FIX.
-    #
-    # Previously:
-    #
-    # effective_from = 2026-10-05
-    #
-    # But historical orders exist before that.
-    #
-    # Now:
-    #
-    # effective_from =
-    # earliest order_date
-    #
-    # Example:
-    #
-    # orders:
-    #   2025-02-01 -> 2026-10-05
-    #
-    # customer initial version:
-    #
-    # effective_from = 2025-02-01
-    # effective_to   = 9999-12-31
-    #
-    # Therefore every historical order
-    # can find a valid customer version.
-    #
-    # =========================================================================
-
+   
     initial_effective_from = (
         orders
         .select(
