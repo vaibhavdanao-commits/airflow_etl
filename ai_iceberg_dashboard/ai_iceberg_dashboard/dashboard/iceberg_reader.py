@@ -7,6 +7,7 @@ from typing import Any
 from urllib.parse import unquote, urlparse
 
 import duckdb
+import pandas as pd
 from dotenv import load_dotenv
 from pyiceberg.catalog import load_catalog
 
@@ -20,12 +21,10 @@ load_dotenv(HERE / ".env")
 
 
 def get_config() -> dict[str, str]:
-    """Load configuration for the existing Iceberg warehouse."""
-
+    """Read configuration for the existing Iceberg warehouse."""
     return {
         "catalog_name": os.getenv(
-            "ICEBERG_CATALOG_NAME",
-            "dimensional_model",
+            "ICEBERG_CATALOG_NAME", "dimensional_model"
         ),
         "catalog_db": os.getenv(
             "ICEBERG_CATALOG_DB",
@@ -36,22 +35,30 @@ def get_config() -> dict[str, str]:
             r"D:\airflow_etl\Warehouse\dimensional_model",
         ),
         "namespace": os.getenv(
-            "ICEBERG_NAMESPACE",
-            "star_schema",
+            "ICEBERG_NAMESPACE", "star_schema"
         ),
     }
 
 
+def project_paths() -> tuple[str, str, str, str]:
+    """
+    Return the four values expected by app.py:
+    root, catalog database, warehouse path, namespace.
+    """
+    config = get_config()
+    catalog_db = Path(config["catalog_db"]).expanduser().resolve()
+    warehouse = Path(config["warehouse"]).expanduser().resolve()
+
+    return (
+        str(warehouse.parent),
+        str(catalog_db),
+        str(warehouse),
+        config["namespace"],
+    )
+
+
 def windows_file_uri_to_path(value: str) -> str:
-    """
-    Convert a Windows local file URI to a native Windows path.
-
-    Example:
-        file:///D:/folder/file.json
-        -> D:\\folder\\file.json
-
-    This helper does not modify catalog metadata.
-    """
+    """Convert a local Windows file URI to a native Windows path."""
     parsed = urlparse(value)
 
     if parsed.scheme.lower() != "file":
@@ -59,15 +66,10 @@ def windows_file_uri_to_path(value: str) -> str:
 
     path = unquote(parsed.path)
 
-    # Convert /D:/folder/file.json to D:/folder/file.json.
-    if (
-        len(path) >= 3
-        and path.startswith("/")
-        and path[2] == ":"
-    ):
+    # file:///D:/folder/file -> D:/folder/file
+    if len(path) >= 3 and path.startswith("/") and path[2] == ":":
         path = path[1:]
 
-    # Handle file://server/share paths if encountered.
     if parsed.netloc and parsed.netloc.lower() != "localhost":
         path = f"//{parsed.netloc}{path}"
 
@@ -75,15 +77,13 @@ def windows_file_uri_to_path(value: str) -> str:
 
 
 # ============================================================
-# ICEBERG CATALOG
+# EXISTING ICEBERG CATALOG
 # ============================================================
 
 def get_catalog():
     """
     Connect to the existing SQL-backed Iceberg catalog.
-
-    This function does not intentionally create a replacement
-    catalog or namespace.
+    Does not intentionally create a replacement catalog or tables.
     """
     config = get_config()
 
@@ -93,70 +93,45 @@ def get_catalog():
 
     if not catalog_db.is_file():
         raise FileNotFoundError(
-            f"Iceberg catalog database was not found:\n{catalog_db}\n"
-            "Check ICEBERG_CATALOG_DB in dashboard/.env."
+            f"Catalog database not found:\n{catalog_db}\n"
+            "Check ICEBERG_CATALOG_DB in .env."
         )
 
     if not warehouse.is_dir():
         raise FileNotFoundError(
-            f"Iceberg warehouse directory was not found:\n{warehouse}\n"
-            "Check ICEBERG_WAREHOUSE in dashboard/.env."
+            f"Warehouse directory not found:\n{warehouse}\n"
+            "Check ICEBERG_WAREHOUSE in .env."
         )
-
-    # SQLite URI for a Windows drive path.
-    sqlite_uri = f"sqlite:///{catalog_db.as_posix()}"
 
     catalog = load_catalog(
         config["catalog_name"],
         type="sql",
-        uri=sqlite_uri,
+        uri=f"sqlite:///{catalog_db.as_posix()}",
         warehouse=warehouse.as_uri(),
         **{
             "py-io-impl": "pyiceberg.io.fsspec.FsspecFileIO",
         },
     )
 
-    try:
-        namespaces = catalog.list_namespaces()
-    except Exception as exc:
-        raise RuntimeError(
-            f"Unable to read namespaces from catalog:\n{catalog_db}\n"
-            f"Original error: {exc}"
-        ) from exc
+    namespaces = catalog.list_namespaces()
+    available = {".".join(ns) for ns in namespaces}
 
-    normalized_namespaces = {
-        ".".join(item) for item in namespaces
-    }
-
-    if namespace not in normalized_namespaces:
+    if namespace not in available:
         raise RuntimeError(
             f"Namespace '{namespace}' was not found.\n"
-            f"Available namespaces: {sorted(normalized_namespaces)}\n"
-            "The dashboard will not create a replacement namespace."
+            f"Available namespaces: {sorted(available)}"
         )
 
     return catalog
 
 
-# ============================================================
-# DISCOVER TABLES
-# ============================================================
-
 def list_iceberg_tables() -> list[str]:
-    """List existing Iceberg table names in the configured namespace."""
-
+    """Return table names from the configured namespace."""
     config = get_config()
     catalog = get_catalog()
 
-    try:
-        identifiers = catalog.list_tables(config["namespace"])
-    except Exception as exc:
-        raise RuntimeError(
-            f"Unable to list tables in namespace "
-            f"'{config['namespace']}': {exc}"
-        ) from exc
-
-    names: list[str] = []
+    identifiers = catalog.list_tables(config["namespace"])
+    names = []
 
     for identifier in identifiers:
         if isinstance(identifier, (tuple, list)):
@@ -173,37 +148,51 @@ def list_iceberg_tables() -> list[str]:
 # LOAD ICEBERG TABLES
 # ============================================================
 
-def load_iceberg_tables() -> tuple[dict[str, Any], dict[str, str]]:
+def load_iceberg_tables() -> tuple[
+    dict[str, pd.DataFrame], dict[str, Any]
+]:
     """
-    Read the existing Iceberg tables into Arrow tables.
+    Load existing Iceberg tables into Pandas DataFrames.
 
     Returns:
-        arrow_tables: {table_name: pyarrow.Table}
-        schema_text:  {table_name: formatted column definitions}
+        frames:
+            {table_name: Pandas DataFrame}
+
+        info:
+            {
+                "namespace": ...,
+                "tables": {
+                    table_name: {
+                        "rows": ...,
+                        "columns": [...]
+                    }
+                },
+                "schema_text": {
+                    table_name: "column (type), ..."
+                }
+            }
+
+    This function reads data only. It does not write to Iceberg.
     """
     config = get_config()
     catalog = get_catalog()
     namespace = config["namespace"]
 
-    try:
-        identifiers = catalog.list_tables(namespace)
-    except Exception as exc:
-        raise RuntimeError(
-            f"Unable to list tables in namespace '{namespace}': {exc}"
-        ) from exc
+    identifiers = catalog.list_tables(namespace)
 
     if not identifiers:
         raise RuntimeError(
-            f"No Iceberg tables were found in namespace '{namespace}'."
+            f"No Iceberg tables found in namespace '{namespace}'."
         )
 
-    arrow_tables: dict[str, Any] = {}
+    frames: dict[str, pd.DataFrame] = {}
+    table_info: dict[str, dict[str, Any]] = {}
     schema_text: dict[str, str] = {}
 
     for identifier in identifiers:
         if isinstance(identifier, (tuple, list)):
-            table_name = str(identifier[-1])
             table_identifier = tuple(identifier)
+            table_name = str(identifier[-1])
         else:
             table_name = str(identifier).split(".")[-1]
             table_identifier = (namespace, table_name)
@@ -211,9 +200,7 @@ def load_iceberg_tables() -> tuple[dict[str, Any], dict[str, str]]:
         full_name = f"{namespace}.{table_name}"
 
         try:
-            # Use the exact identifier returned by the catalog.
             iceberg_table = catalog.load_table(table_identifier)
-
             iceberg_schema = iceberg_table.schema()
 
             schema_text[table_name] = ", ".join(
@@ -221,57 +208,53 @@ def load_iceberg_tables() -> tuple[dict[str, Any], dict[str, str]]:
                 for field in iceberg_schema.fields
             )
 
-            # Read the current snapshot; do not write to Iceberg.
+            # Read the existing table snapshot; never modify Iceberg.
             arrow_table = iceberg_table.scan().to_arrow()
+            frame = arrow_table.to_pandas()
 
-            arrow_tables[table_name] = arrow_table
+            frames[table_name] = frame
+            table_info[table_name] = {
+                "rows": len(frame),
+                "columns": list(frame.columns),
+            }
 
             print(
                 f"Loaded Iceberg table: {table_name} | "
-                f"Rows: {arrow_table.num_rows:,} | "
-                f"Columns: {arrow_table.num_columns}"
+                f"Rows: {len(frame):,} | "
+                f"Columns: {len(frame.columns)}"
             )
 
         except Exception as exc:
-            message = str(exc)
-
-            if (
-                "pyroaring" in message.lower()
-                or "dll load failed" in message.lower()
-            ):
-                message += (
-                    "\nPossible Windows native-extension compatibility "
-                    "issue. Check the installed PyIceberg and pyroaring "
-                    "versions in the active Python environment."
-                )
-
             raise RuntimeError(
-                f"Failed to read Iceberg table '{full_name}'.\n"
-                f"Original error: {message}"
+                f"Failed to read Iceberg table '{full_name}': {exc}"
             ) from exc
 
-    return arrow_tables, schema_text
+    info: dict[str, Any] = {
+        "namespace": namespace,
+        "tables": table_info,
+        "schema_text": schema_text,
+    }
+
+    return frames, info
 
 
 # ============================================================
-# DUCKDB REGISTRATION
+# DUCKDB
 # ============================================================
 
 def make_duckdb_connection(
-    arrow_tables: dict[str, Any],
+    frames: dict[str, Any],
 ) -> duckdb.DuckDBPyConnection:
-    """
-    Register loaded Arrow tables in an in-memory DuckDB connection.
-    """
+    """Register DataFrames in a new in-memory DuckDB connection."""
     connection = duckdb.connect(database=":memory:")
 
     try:
         connection.execute("SET enable_external_access = false")
 
-        for table_name, arrow_table in arrow_tables.items():
-            connection.register(table_name, arrow_table)
-
+        for table_name, frame in frames.items():
+            # Quote identifiers safely.
             escaped_name = table_name.replace('"', '""')
+            connection.register(table_name, frame)
 
             connection.execute(
                 f'SELECT * FROM "{escaped_name}" LIMIT 0'
@@ -284,28 +267,23 @@ def make_duckdb_connection(
         raise
 
 
-# ============================================================
-# TABLE PREVIEW
-# ============================================================
-
 def get_table_preview(
-    arrow_tables: dict[str, Any],
+    frames: dict[str, pd.DataFrame],
     table_name: str,
     limit: int = 10,
-):
-    """Return a Pandas preview of an already-loaded Arrow table."""
-
-    if table_name not in arrow_tables:
+) -> pd.DataFrame:
+    """Return a preview of an already-loaded table."""
+    if table_name not in frames:
         raise KeyError(f"Unknown table: {table_name}")
 
     if limit < 1:
-        raise ValueError("Limit must be greater than zero.")
+        raise ValueError("limit must be greater than zero")
 
-    return arrow_tables[table_name].slice(0, limit).to_pandas()
+    return frames[table_name].head(limit)
 
 
 # ============================================================
-# LOCAL CONNECTION TEST
+# LOCAL TEST
 # ============================================================
 
 if __name__ == "__main__":
@@ -314,34 +292,29 @@ if __name__ == "__main__":
     print("=" * 65)
 
     config = get_config()
-
     print("Catalog:   ", config["catalog_name"])
     print("Database:  ", config["catalog_db"])
     print("Warehouse: ", config["warehouse"])
     print("Namespace: ", config["namespace"])
     print()
 
-    arrow_tables, schemas = load_iceberg_tables()
-    connection = make_duckdb_connection(arrow_tables)
+    frames, info = load_iceberg_tables()
+    connection = make_duckdb_connection(frames)
 
     try:
         print("\nRegistered table row counts:")
 
-        for table_name in arrow_tables:
+        for table_name in frames:
             escaped_name = table_name.replace('"', '""')
-
             count = connection.execute(
                 f'SELECT COUNT(*) FROM "{escaped_name}"'
             ).fetchone()[0]
 
             print(f"  {table_name}: {count:,} rows")
 
-        print("\nTable schemas:")
-
-        for table_name, schema in schemas.items():
-            print(f"\n{table_name}: {schema}")
-
         print("\nSUCCESS: Iceberg tables loaded into DuckDB.")
+        print("Info keys:", list(info.keys()))
+        print("Tables:", list(info["tables"].keys()))
 
     finally:
         connection.close()
