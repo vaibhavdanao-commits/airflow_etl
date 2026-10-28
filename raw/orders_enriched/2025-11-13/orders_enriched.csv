@@ -1,0 +1,264 @@
+order_id,customer_id,customer_name,email,customer_segment,city,state,product_id,product_name,category,supplier,price,order_date,quantity,unit_price,total_amount,payment_method,order_status,store_id
+111215,593,Customer_0593,customer0593@example.com,SMB,Chennai,Tamil Nadu,28,Product_0028,Office Supplies,ABC Traders,1978.5,2025-11-13,2,1821.75,3643.5,Wallet,Shipped,7
+59535,701,Customer_0701,customer0701@example.com,Consumer,Jaipur,Rajasthan,133,Product_0133,Sports,Prime Distributors,6568.79,2025-11-13,8,6770.78,54166.24,Cash on Delivery,Delivered,2
+72047,315,Customer_0315,customer0315@example.com,Corporate,Chennai,Tamil Nadu,160,Product_0160,Office Supplies,Prime Distributors,202.66,2025-11-13,2,182.11,364.22,UPI,Delivered,41
+52040,515,Customer_0515,customer0515@example.com,Consumer,Visakhapatnam,Andhra Pradesh,132,Product_0132,Sports,Smart Retail Supply,2294.06,2025-11-13,2,2062.53,4125.06,Net Banking,Delivered,13
+141137,534,Customer_0534,customer0534@example.com,Corporate,Delhi,Delhi,18,Product_0018,Home Appliances,ABC Traders,21278.97,2025-11-13,2,22203.24,44406.48,Net Banking,Shipped,39
+44586,448,Customer_0448,customer0448@example.com,Consumer,Visakhapatnam,Andhra Pradesh,114,Product_0114,Electronics,Smart Retail Supply,23567.86,2025-11-13,8,24134.56,193076.48,UPI,Shipped,19
+12322,955,Customer_0955,customer0955@example.com,Corporate,Kochi,Kerala,94,Product_0094,Office Supplies,Prime Distributors,166.59,2025-11-13,1,169.6,169.6,UPI,Processing,39
+24566,498,Customer_0498,customer0498@example.com,Corporate,Gurugram,Haryana,4,Product_0004,Furniture,Smart Retail Supply,53918.06,2025-11-13,2,45982.95,91965.9,UPI,Processing,3
+46742,956,Customer_0956,customer0956@example.com,Consumer,Nagpur,Maharashtra,24,Product_0024,Home Appliances,Prime Distributors,17361.02,2025-11-13,1,15262.78,15262.78,Debit Card,Delivered,37
+55664,860,Customer_0860,customer0860@example.com,Premium,Surat,Gujarat,162,Product_0162,Grocery,Metro Wholesale,2219.25,2025-11-13,1,1944.16,1944.16,Credit Card,Delivered,3
+82981,977,Customer_0977,customer0977@example.com,SMB,Bengaluru,Karnataka,17,Product_0017,Grocery,ABC Traders,2370.31,2025-11-13,1,2071.5,2071.5,Credit Card,Delivered,11
+90336,688,Customer_0688,customer0688@example.com,Consumer,Indore,Madhya Pradesh,45,Product_0045,Home Appliances,Global Supply Co,17908.99,2025-11-13,4,15773.11,63092.44,Debit Card,Delivered,44
+92629,623,Customer_0623,customer0623@example.com,Consumer,Pune,Maharashtra,92,Product_0092,Sports,Smart Retail Supply,4787.52,2025-11-13,2,4491.52,8983.04,Credit Card,Cancelled,35
+46865,256,Customer_0256,customer0256@example.com,SMB,Mumbai,Maharashtra,78,Product_0078,Sports,Prime Distributors,9813.87,2025-11-13,1,10100.36,10100.36,Credit Card,Delivered,28
+56465,367,Customer_0367,customer0367@example.com,Consumer,Ahmedabad,Gujarat,6,Product_0006,Home Appliances,Global Supply Co,29441.45,2025-11-13,6,30247.69,181486.14,Debit Card,Cancelled,11
+52707,810,Customer_0810,customer0810@example.com,Consumer,Visakhapatnam,Andhra Pradesh,93,Product_0093,Office Supplies,Smart Retail Supply,932.42,2025-11-13,4,921.48,3685.92,Net Banking,Delivered,9
+131647,750,Customer_0750,customer0750@example.com,Consumer,Pune,Maharashtra,123,Product_0123,Office Supplies,Prime Distributors,825.05,2025-11-13,4,801.22,3204.88,Debit Card,Processing,33
+98481,366,Customer_0366,customer0366@example.com,Consumer,Jaipur,Rajasthan,110,Product_0110,Home Appliances,Prime Distributors,6223.82,2025-11-13,5,5658.52,28292.6,Net Banking,Processing,25
+69607,228,Customer_0228,customer0228@example.com,Consumer,Indore,Madhya Pradesh,72,Product_0072,Furniture,ABC Traders,76214.81,2025-11-13,3,74034.74,222104.22,Debit Card,Delivered,43
+25150,867,Customer_0867,customer0867@example.com,Corporate,Surat,Gujarat,198,Product_0198,Grocery,Prime Distributors,1401.48,2025-11-13,2,1408.05,2816.1,Credit Card,Processing,18
+63342,420,Customer_0420,customer0420@example.com,Corporate,Jaipur,Rajasthan,18,Product_0018,Home Appliances,ABC Traders,21278.97,2025-11-13,1,18966.39,18966.39,Cash on Delivery,Returned,35
+39457,795,Customer_0795,customer0795@example.com,Corporate,Kolkata,West Bengal,124,Product_0124,Electronics,Smart Retail Supply,78893.56,2025-11-13,1,70263.86,70263.86,UPI,Delivered,7
+54679,653,Customer_0653,customer0653@example.com,Premium,Chennai,Tamil Nadu,59,Product_0059,Electronics,Global Supply Co,56106.82,2025-11-13,1,51597.19,51597.19,UPI,Processing,2
+95888,43,Customer_0043,customer0043@example.com,Consumer,Bhopal,Madhya Pradesh,39,Product_0039,Grocery,Global Supply Co,763.27,2025-11-13,4,658.12,2632.48,Cash on Delivery,Delivered,20
+2045,403,Customer_0403,customer0403@example.com,Consumer,Noida,Uttar Pradesh,181,Product_0181,Fashion,Metro Wholesale,2062.03,2025-11-13,2,1993.97,3987.94,Credit Card,Processing,28
+65776,980,Customer_0980,customer0980@example.com,Consumer,Indore,Madhya Pradesh,193,Product_0193,Mobile Accessories,Metro Wholesale,3036.67,2025-11-13,1,2693.77,2693.77,Cash on Delivery,Delivered,30
+6251,307,Customer_0307,customer0307@example.com,Consumer,Noida,Uttar Pradesh,152,Product_0152,Home Appliances,Prime Distributors,36179.84,2025-11-13,1,35680.49,35680.49,UPI,Delivered,45
+29982,640,Customer_0640,customer0640@example.com,Consumer,Bhubaneswar,Odisha,98,Product_0098,Electronics,Global Supply Co,58576.01,2025-11-13,1,53882.64,53882.64,Debit Card,Delivered,23
+93084,701,Customer_0701,customer0701@example.com,Consumer,Jaipur,Rajasthan,26,Product_0026,Grocery,Prime Distributors,195.87,2025-11-13,4,193.95,775.8,Debit Card,Delivered,24
+74351,154,Customer_0154,customer0154@example.com,Consumer,Delhi,Delhi,9,Product_0009,Sports,National Suppliers,14996.54,2025-11-13,6,14631.0,87786.0,Debit Card,Delivered,11
+111661,385,Customer_0385,customer0385@example.com,SMB,Hyderabad,Telangana,92,Product_0092,Sports,Smart Retail Supply,4787.52,2025-11-13,2,4647.88,9295.76,UPI,Delivered,21
+129965,470,Customer_0470,customer0470@example.com,Consumer,Bhubaneswar,Odisha,130,Product_0130,Grocery,Smart Retail Supply,960.54,2025-11-13,1,947.5,947.5,Wallet,Shipped,29
+42497,264,Customer_0264,customer0264@example.com,SMB,Bhubaneswar,Odisha,156,Product_0156,Home Appliances,National Suppliers,33142.16,2025-11-13,2,32339.52,64679.04,Debit Card,Shipped,45
+71178,645,Customer_0645,customer0645@example.com,Consumer,Kochi,Kerala,122,Product_0122,Fashion,Smart Retail Supply,1239.24,2025-11-13,2,1257.48,2514.96,UPI,Delivered,39
+143260,750,Customer_0750,customer0750@example.com,Consumer,Pune,Maharashtra,69,Product_0069,Fashion,Metro Wholesale,7658.69,2025-11-13,5,7404.01,37020.05,Cash on Delivery,Returned,48
+11382,106,Customer_0106,customer0106@example.com,Consumer,Kochi,Kerala,28,Product_0028,Office Supplies,ABC Traders,1978.5,2025-11-13,1,1765.02,1765.02,Credit Card,Delivered,6
+10558,383,Customer_0383,customer0383@example.com,Premium,Bhubaneswar,Odisha,125,Product_0125,Electronics,Prime Distributors,17349.6,2025-11-13,1,15533.85,15533.85,UPI,Delivered,36
+82966,758,Customer_0758,customer0758@example.com,Premium,Gurugram,Haryana,118,Product_0118,Grocery,Metro Wholesale,2300.54,2025-11-13,2,2211.01,4422.02,UPI,Processing,6
+41317,843,Customer_0843,customer0843@example.com,Consumer,Bhubaneswar,Odisha,75,Product_0075,Office Supplies,National Suppliers,1690.76,2025-11-13,3,1547.37,4642.11,Debit Card,Delivered,36
+44894,521,Customer_0521,customer0521@example.com,SMB,Gurugram,Haryana,149,Product_0149,Office Supplies,Metro Wholesale,216.05,2025-11-13,6,193.12,1158.72,UPI,Delivered,2
+17820,47,Customer_0047,customer0047@example.com,SMB,Kolkata,West Bengal,70,Product_0070,Fashion,Smart Retail Supply,7465.54,2025-11-13,1,6699.79,6699.79,UPI,Delivered,22
+16982,742,Customer_0742,customer0742@example.com,Premium,Kochi,Kerala,58,Product_0058,Home Appliances,Global Supply Co,28576.51,2025-11-13,4,28467.09,113868.36,Wallet,Cancelled,11
+111450,761,Customer_0761,customer0761@example.com,Consumer,Pune,Maharashtra,1,Product_0001,Mobile Accessories,ABC Traders,4489.43,2025-11-13,1,3891.81,3891.81,Credit Card,Delivered,47
+98836,484,Customer_0484,customer0484@example.com,Consumer,Kochi,Kerala,96,Product_0096,Fashion,ABC Traders,805.15,2025-11-13,1,842.96,842.96,Debit Card,Delivered,1
+107024,657,Customer_0657,customer0657@example.com,Consumer,Kochi,Kerala,193,Product_0193,Mobile Accessories,Metro Wholesale,3036.67,2025-11-13,4,3096.41,12385.64,Debit Card,Delivered,34
+64819,19,Customer_0019,customer0019@example.com,SMB,Surat,Gujarat,127,Product_0127,Mobile Accessories,Smart Retail Supply,2932.16,2025-11-13,2,3068.56,6137.12,Cash on Delivery,Delivered,25
+31015,754,Customer_0754,customer0754@example.com,Corporate,Bhubaneswar,Odisha,192,Product_0192,Office Supplies,Metro Wholesale,82.26,2025-11-13,1,72.43,72.43,UPI,Processing,36
+148671,505,Customer_0505,customer0505@example.com,SMB,Delhi,Delhi,27,Product_0027,Mobile Accessories,ABC Traders,337.94,2025-11-13,4,332.26,1329.04,Credit Card,Delivered,40
+48688,181,Customer_0181,customer0181@example.com,Consumer,Bhubaneswar,Odisha,197,Product_0197,Home Appliances,Metro Wholesale,9106.47,2025-11-13,2,9185.83,18371.66,UPI,Delivered,29
+66818,667,Customer_0667,customer0667@example.com,Consumer,Jaipur,Rajasthan,191,Product_0191,Electronics,ABC Traders,29248.99,2025-11-13,1,26554.23,26554.23,UPI,Delivered,29
+110807,449,Customer_0449,customer0449@example.com,SMB,Jaipur,Rajasthan,76,Product_0076,Home Appliances,National Suppliers,14997.98,2025-11-13,1,15252.39,15252.39,Debit Card,Processing,7
+23797,561,Customer_0561,customer0561@example.com,SMB,Jaipur,Rajasthan,191,Product_0191,Electronics,ABC Traders,29248.99,2025-11-13,2,30112.84,60225.68,Credit Card,Delivered,30
+24666,163,Customer_0163,customer0163@example.com,Consumer,Kolkata,West Bengal,184,Product_0184,Furniture,Global Supply Co,69196.99,2025-11-13,2,63060.46,126120.92,Credit Card,Shipped,45
+69958,825,Customer_0825,customer0825@example.com,Corporate,Nagpur,Maharashtra,51,Product_0051,Fashion,Prime Distributors,4732.76,2025-11-13,4,4789.11,19156.44,Debit Card,Returned,7
+142438,984,Customer_0984,customer0984@example.com,Premium,Nagpur,Maharashtra,67,Product_0067,Electronics,Metro Wholesale,58095.76,2025-11-13,1,57465.25,57465.25,Net Banking,Delivered,42
+94851,925,Customer_0925,customer0925@example.com,Consumer,Chennai,Tamil Nadu,27,Product_0027,Mobile Accessories,ABC Traders,337.94,2025-11-13,3,291.22,873.66,UPI,Processing,4
+72804,261,Customer_0261,customer0261@example.com,Consumer,Kochi,Kerala,196,Product_0196,Sports,ABC Traders,3045.0,2025-11-13,2,2831.08,5662.16,UPI,Returned,41
+94242,206,Customer_0206,customer0206@example.com,Corporate,Delhi,Delhi,7,Product_0007,Electronics,Metro Wholesale,13178.27,2025-11-13,2,13521.68,27043.36,Debit Card,Shipped,39
+140761,32,Customer_0032,customer0032@example.com,Premium,Chennai,Tamil Nadu,7,Product_0007,Electronics,Metro Wholesale,13178.27,2025-11-13,2,12354.19,24708.38,UPI,Delivered,28
+131334,682,Customer_0682,customer0682@example.com,Consumer,Mumbai,Maharashtra,25,Product_0025,Mobile Accessories,Metro Wholesale,3570.57,2025-11-13,1,3696.69,3696.69,Credit Card,Cancelled,1
+46424,382,Customer_0382,customer0382@example.com,Premium,Bhubaneswar,Odisha,41,Product_0041,Electronics,ABC Traders,30015.17,2025-11-13,2,27935.85,55871.7,Cash on Delivery,Delivered,49
+31501,143,Customer_0143,customer0143@example.com,Consumer,Delhi,Delhi,158,Product_0158,Mobile Accessories,ABC Traders,878.13,2025-11-13,6,829.56,4977.36,Cash on Delivery,Delivered,34
+61553,544,Customer_0544,customer0544@example.com,Consumer,Pune,Maharashtra,101,Product_0101,Electronics,ABC Traders,38153.9,2025-11-13,3,39701.61,119104.83,Credit Card,Shipped,6
+102578,659,Customer_0659,customer0659@example.com,Consumer,Bengaluru,Karnataka,132,Product_0132,Sports,Smart Retail Supply,2294.06,2025-11-13,3,2021.69,6065.07,Credit Card,Shipped,26
+27839,805,Customer_0805,customer0805@example.com,Consumer,Bhopal,Madhya Pradesh,23,Product_0023,Home Appliances,Global Supply Co,58516.35,2025-11-13,1,58164.78,58164.78,Wallet,Delivered,39
+35497,924,Customer_0924,customer0924@example.com,Consumer,Mumbai,Maharashtra,110,Product_0110,Home Appliances,Prime Distributors,6223.82,2025-11-13,2,6347.39,12694.78,Credit Card,Delivered,15
+128671,511,Customer_0511,customer0511@example.com,Corporate,Visakhapatnam,Andhra Pradesh,142,Product_0142,Home Appliances,Prime Distributors,19578.23,2025-11-13,3,18783.57,56350.71,UPI,Delivered,18
+110113,768,Customer_0768,customer0768@example.com,SMB,Ahmedabad,Gujarat,48,Product_0048,Furniture,Prime Distributors,32721.05,2025-11-13,1,31805.73,31805.73,UPI,Delivered,50
+58675,968,Customer_0968,customer0968@example.com,Corporate,Noida,Uttar Pradesh,42,Product_0042,Mobile Accessories,Prime Distributors,1384.56,2025-11-13,4,1417.56,5670.24,Credit Card,Delivered,9
+68732,964,Customer_0964,customer0964@example.com,Consumer,Chennai,Tamil Nadu,77,Product_0077,Fashion,Smart Retail Supply,10366.05,2025-11-13,1,10826.98,10826.98,Net Banking,Returned,4
+76136,292,Customer_0292,customer0292@example.com,Consumer,Delhi,Delhi,37,Product_0037,Furniture,Global Supply Co,34730.11,2025-11-13,5,30571.83,152859.15,UPI,Delivered,17
+109041,779,Customer_0779,customer0779@example.com,Consumer,Delhi,Delhi,191,Product_0191,Electronics,ABC Traders,29248.99,2025-11-13,1,26676.02,26676.02,UPI,Delivered,16
+115580,203,Customer_0203,customer0203@example.com,Consumer,Ahmedabad,Gujarat,125,Product_0125,Electronics,Prime Distributors,17349.6,2025-11-13,4,16077.51,64310.04,Net Banking,Delivered,29
+102934,537,Customer_0537,customer0537@example.com,SMB,Ahmedabad,Gujarat,166,Product_0166,Office Supplies,Smart Retail Supply,1284.8,2025-11-13,3,1335.09,4005.27,Cash on Delivery,Shipped,15
+39886,138,Customer_0138,customer0138@example.com,Corporate,Hyderabad,Telangana,72,Product_0072,Furniture,ABC Traders,76214.81,2025-11-13,1,69059.9,69059.9,UPI,Delivered,46
+25966,657,Customer_0657,customer0657@example.com,Consumer,Kochi,Kerala,197,Product_0197,Home Appliances,Metro Wholesale,9106.47,2025-11-13,2,7967.67,15935.34,UPI,Delivered,41
+97334,832,Customer_0832,customer0832@example.com,Consumer,Chennai,Tamil Nadu,97,Product_0097,Furniture,ABC Traders,2925.02,2025-11-13,2,2489.47,4978.94,Net Banking,Delivered,29
+13095,449,Customer_0449,customer0449@example.com,SMB,Jaipur,Rajasthan,86,Product_0086,Sports,National Suppliers,11522.1,2025-11-13,2,11487.31,22974.62,Credit Card,Shipped,40
+28974,992,Customer_0992,customer0992@example.com,Consumer,Jaipur,Rajasthan,26,Product_0026,Grocery,Prime Distributors,195.87,2025-11-13,2,192.92,385.84,UPI,Delivered,45
+60282,704,Customer_0704,customer0704@example.com,Premium,Pune,Maharashtra,174,Product_0174,Furniture,Global Supply Co,15619.88,2025-11-13,2,14440.26,28880.52,Wallet,Delivered,2
+109742,800,Customer_0800,customer0800@example.com,Corporate,Kolkata,West Bengal,9,Product_0009,Sports,National Suppliers,14996.54,2025-11-13,1,15378.5,15378.5,UPI,Delivered,17
+23324,571,Customer_0571,customer0571@example.com,Corporate,Bhubaneswar,Odisha,186,Product_0186,Electronics,Prime Distributors,4354.52,2025-11-13,1,3820.76,3820.76,UPI,Delivered,42
+5913,417,Customer_0417,customer0417@example.com,SMB,Visakhapatnam,Andhra Pradesh,99,Product_0099,Sports,Metro Wholesale,14245.89,2025-11-13,4,13465.25,53861.0,UPI,Delivered,32
+68315,148,Customer_0148,customer0148@example.com,SMB,Chennai,Tamil Nadu,124,Product_0124,Electronics,Smart Retail Supply,78893.56,2025-11-13,3,67180.31,201540.93,UPI,Delivered,32
+82700,8,Customer_0008,customer0008@example.com,Consumer,Lucknow,Uttar Pradesh,52,Product_0052,Electronics,Prime Distributors,47331.54,2025-11-13,3,40825.85,122477.55,UPI,Delivered,17
+88785,336,Customer_0336,customer0336@example.com,Corporate,Surat,Gujarat,162,Product_0162,Grocery,Metro Wholesale,2219.25,2025-11-13,1,2287.67,2287.67,Debit Card,Delivered,18
+91400,525,Customer_0525,customer0525@example.com,Consumer,Noida,Uttar Pradesh,85,Product_0085,Sports,National Suppliers,13348.42,2025-11-13,6,11555.27,69331.62,UPI,Shipped,38
+137305,557,Customer_0557,customer0557@example.com,Corporate,Bhopal,Madhya Pradesh,47,Product_0047,Mobile Accessories,Prime Distributors,2032.55,2025-11-13,1,2017.11,2017.11,Net Banking,Delivered,50
+11760,65,Customer_0065,customer0065@example.com,Consumer,Kolkata,West Bengal,24,Product_0024,Home Appliances,Prime Distributors,17361.02,2025-11-13,6,16363.59,98181.54,Wallet,Cancelled,22
+18208,227,Customer_0227,customer0227@example.com,Premium,Surat,Gujarat,196,Product_0196,Sports,ABC Traders,3045.0,2025-11-13,1,3122.4,3122.4,UPI,Delivered,25
+130326,757,Customer_0757,customer0757@example.com,Premium,Bhopal,Madhya Pradesh,65,Product_0065,Mobile Accessories,Smart Retail Supply,3794.87,2025-11-13,1,3494.83,3494.83,UPI,Shipped,17
+64387,284,Customer_0284,customer0284@example.com,Premium,Ahmedabad,Gujarat,92,Product_0092,Sports,Smart Retail Supply,4787.52,2025-11-13,1,4360.15,4360.15,Wallet,Delivered,41
+121688,236,Customer_0236,customer0236@example.com,Consumer,Bhopal,Madhya Pradesh,188,Product_0188,Mobile Accessories,Global Supply Co,498.53,2025-11-13,3,470.63,1411.89,UPI,Delivered,40
+109612,942,Customer_0942,customer0942@example.com,Consumer,Kolkata,West Bengal,148,Product_0148,Furniture,Metro Wholesale,4578.69,2025-11-13,3,4806.68,14420.04,Credit Card,Delivered,25
+98165,595,Customer_0595,customer0595@example.com,Consumer,Noida,Uttar Pradesh,7,Product_0007,Electronics,Metro Wholesale,13178.27,2025-11-13,4,12713.05,50852.2,UPI,Processing,6
+75273,351,Customer_0351,customer0351@example.com,Consumer,Jaipur,Rajasthan,42,Product_0042,Mobile Accessories,Prime Distributors,1384.56,2025-11-13,10,1413.08,14130.8,Credit Card,Delivered,48
+77888,651,Customer_0651,customer0651@example.com,Consumer,Ahmedabad,Gujarat,128,Product_0128,Electronics,Global Supply Co,40241.46,2025-11-13,1,37328.43,37328.43,Credit Card,Processing,11
+127560,598,Customer_0598,customer0598@example.com,Consumer,Kochi,Kerala,9,Product_0009,Sports,National Suppliers,14996.54,2025-11-13,3,14201.69,42605.07,Wallet,Delivered,8
+29510,317,Customer_0317,customer0317@example.com,SMB,Bhopal,Madhya Pradesh,7,Product_0007,Electronics,Metro Wholesale,13178.27,2025-11-13,4,11768.22,47072.88,Credit Card,Shipped,33
+96254,892,Customer_0892,customer0892@example.com,Consumer,Bhopal,Madhya Pradesh,21,Product_0021,Furniture,Metro Wholesale,38914.15,2025-11-13,1,35322.83,35322.83,Credit Card,Delivered,17
+67823,909,Customer_0909,customer0909@example.com,Consumer,Gurugram,Haryana,91,Product_0091,Mobile Accessories,ABC Traders,3111.03,2025-11-13,4,3086.66,12346.64,Debit Card,Delivered,25
+69689,606,Customer_0606,customer0606@example.com,Consumer,Jaipur,Rajasthan,128,Product_0128,Electronics,Global Supply Co,40241.46,2025-11-13,2,41428.04,82856.08,Credit Card,Returned,39
+34923,876,Customer_0876,customer0876@example.com,Consumer,Jaipur,Rajasthan,172,Product_0172,Mobile Accessories,Global Supply Co,1366.64,2025-11-13,3,1390.19,4170.57,Cash on Delivery,Delivered,15
+30615,842,Customer_0842,customer0842@example.com,Premium,Lucknow,Uttar Pradesh,70,Product_0070,Fashion,Smart Retail Supply,7465.54,2025-11-13,2,7773.51,15547.02,Wallet,Returned,38
+8384,308,Customer_0308,customer0308@example.com,Premium,Indore,Madhya Pradesh,106,Product_0106,Office Supplies,National Suppliers,1321.9,2025-11-13,5,1281.86,6409.3,Wallet,Cancelled,5
+50777,515,Customer_0515,customer0515@example.com,Consumer,Visakhapatnam,Andhra Pradesh,152,Product_0152,Home Appliances,Prime Distributors,36179.84,2025-11-13,1,34002.99,34002.99,Credit Card,Shipped,20
+124613,566,Customer_0566,customer0566@example.com,Consumer,Chennai,Tamil Nadu,15,Product_0015,Home Appliances,Prime Distributors,8474.42,2025-11-13,1,8728.74,8728.74,UPI,Delivered,7
+22360,335,Customer_0335,customer0335@example.com,Consumer,Ahmedabad,Gujarat,143,Product_0143,Furniture,Metro Wholesale,65827.71,2025-11-13,5,57313.43,286567.15,Credit Card,Delivered,20
+18930,832,Customer_0832,customer0832@example.com,Consumer,Chennai,Tamil Nadu,42,Product_0042,Mobile Accessories,Prime Distributors,1384.56,2025-11-13,1,1429.48,1429.48,Credit Card,Cancelled,46
+121982,697,Customer_0697,customer0697@example.com,Premium,Bhopal,Madhya Pradesh,77,Product_0077,Fashion,Smart Retail Supply,10366.05,2025-11-13,1,10254.52,10254.52,Debit Card,Delivered,7
+5976,289,Customer_0289,customer0289@example.com,Consumer,Jaipur,Rajasthan,66,Product_0066,Grocery,ABC Traders,1283.96,2025-11-13,2,1126.41,2252.82,Cash on Delivery,Delivered,34
+16872,108,Customer_0108,customer0108@example.com,Consumer,Lucknow,Uttar Pradesh,122,Product_0122,Fashion,Smart Retail Supply,1239.24,2025-11-13,5,1131.48,5657.4,UPI,Delivered,13
+43851,153,Customer_0153,customer0153@example.com,Corporate,Bhubaneswar,Odisha,169,Product_0169,Furniture,Global Supply Co,42944.94,2025-11-13,1,44040.41,44040.41,Net Banking,Delivered,40
+79930,206,Customer_0206,customer0206@example.com,Corporate,Delhi,Delhi,63,Product_0063,Furniture,Smart Retail Supply,51675.8,2025-11-13,3,52950.81,158852.43,UPI,Delivered,32
+95501,500,Customer_0500,customer0500@example.com,Premium,Kolkata,West Bengal,181,Product_0181,Fashion,Metro Wholesale,2062.03,2025-11-13,10,1904.89,19048.9,Cash on Delivery,Shipped,11
+65591,127,Customer_0127,customer0127@example.com,Corporate,Bengaluru,Karnataka,103,Product_0103,Mobile Accessories,National Suppliers,2265.26,2025-11-13,4,2206.41,8825.64,Credit Card,Returned,15
+19085,246,Customer_0246,customer0246@example.com,Consumer,Bengaluru,Karnataka,80,Product_0080,Fashion,Global Supply Co,2500.82,2025-11-13,2,2588.0,5176.0,Credit Card,Delivered,30
+115923,666,Customer_0666,customer0666@example.com,Consumer,Lucknow,Uttar Pradesh,122,Product_0122,Fashion,Smart Retail Supply,1239.24,2025-11-13,2,1070.25,2140.5,UPI,Processing,10
+48714,439,Customer_0439,customer0439@example.com,Consumer,Bengaluru,Karnataka,159,Product_0159,Mobile Accessories,National Suppliers,4178.91,2025-11-13,3,3885.7,11657.1,Debit Card,Shipped,5
+128708,59,Customer_0059,customer0059@example.com,Premium,Bhopal,Madhya Pradesh,67,Product_0067,Electronics,Metro Wholesale,58095.76,2025-11-13,8,56089.63,448717.04,UPI,Delivered,12
+135629,683,Customer_0683,customer0683@example.com,Consumer,Visakhapatnam,Andhra Pradesh,2,Product_0002,Fashion,Global Supply Co,2475.9,2025-11-13,2,2262.72,4525.44,Debit Card,Shipped,18
+128261,193,Customer_0193,customer0193@example.com,SMB,Nagpur,Maharashtra,147,Product_0147,Mobile Accessories,Prime Distributors,581.3,2025-11-13,2,587.59,1175.18,UPI,Delivered,3
+60847,267,Customer_0267,customer0267@example.com,Corporate,Kolkata,West Bengal,47,Product_0047,Mobile Accessories,Prime Distributors,2032.55,2025-11-13,1,2047.64,2047.64,Debit Card,Delivered,33
+106223,727,Customer_0727,customer0727@example.com,Consumer,Bhopal,Madhya Pradesh,54,Product_0054,Fashion,Global Supply Co,6407.17,2025-11-13,10,6451.69,64516.9,Cash on Delivery,Delivered,17
+15507,352,Customer_0352,customer0352@example.com,Consumer,Hyderabad,Telangana,1,Product_0001,Mobile Accessories,ABC Traders,4489.43,2025-11-13,1,3922.57,3922.57,UPI,Delivered,45
+99194,341,Customer_0341,customer0341@example.com,Corporate,Nagpur,Maharashtra,135,Product_0135,Furniture,Global Supply Co,78470.69,2025-11-13,8,72342.46,578739.68,UPI,Delivered,25
+1348,12,Customer_0012,customer0012@example.com,Premium,Visakhapatnam,Andhra Pradesh,161,Product_0161,Home Appliances,Smart Retail Supply,31673.99,2025-11-13,6,32099.97,192599.82,UPI,Shipped,31
+92021,580,Customer_0580,customer0580@example.com,Consumer,Mumbai,Maharashtra,153,Product_0153,Home Appliances,National Suppliers,28394.38,2025-11-13,5,27666.78,138333.9,Wallet,Delivered,11
+86425,587,Customer_0587,customer0587@example.com,Consumer,Lucknow,Uttar Pradesh,81,Product_0081,Fashion,Prime Distributors,4266.58,2025-11-13,3,4230.92,12692.76,UPI,Delivered,31
+6752,668,Customer_0668,customer0668@example.com,SMB,Patna,Bihar,196,Product_0196,Sports,ABC Traders,3045.0,2025-11-13,2,2795.8,5591.6,Cash on Delivery,Processing,1
+41238,612,Customer_0612,customer0612@example.com,Consumer,Ahmedabad,Gujarat,141,Product_0141,Mobile Accessories,Global Supply Co,3680.22,2025-11-13,1,3216.51,3216.51,Cash on Delivery,Processing,35
+107444,53,Customer_0053,customer0053@example.com,Consumer,Gurugram,Haryana,5,Product_0005,Grocery,Smart Retail Supply,1803.61,2025-11-13,2,1761.01,3522.02,UPI,Processing,36
+114128,722,Customer_0722,customer0722@example.com,Corporate,Bhubaneswar,Odisha,140,Product_0140,Home Appliances,Prime Distributors,5611.01,2025-11-13,2,4961.36,9922.72,Debit Card,Delivered,35
+35628,61,Customer_0061,customer0061@example.com,Consumer,Bhubaneswar,Odisha,190,Product_0190,Grocery,ABC Traders,1897.51,2025-11-13,1,1782.33,1782.33,UPI,Returned,44
+8658,666,Customer_0666,customer0666@example.com,Consumer,Lucknow,Uttar Pradesh,22,Product_0022,Mobile Accessories,National Suppliers,1071.72,2025-11-13,1,960.94,960.94,UPI,Delivered,22
+34769,349,Customer_0349,customer0349@example.com,SMB,Pune,Maharashtra,65,Product_0065,Mobile Accessories,Smart Retail Supply,3794.87,2025-11-13,8,3738.67,29909.36,UPI,Processing,10
+74396,175,Customer_0175,customer0175@example.com,Consumer,Lucknow,Uttar Pradesh,68,Product_0068,Electronics,National Suppliers,69653.46,2025-11-13,2,69171.68,138343.36,UPI,Delivered,31
+72718,174,Customer_0174,customer0174@example.com,SMB,Bhopal,Madhya Pradesh,24,Product_0024,Home Appliances,Prime Distributors,17361.02,2025-11-13,6,17342.95,104057.7,Debit Card,Shipped,6
+118495,932,Customer_0932,customer0932@example.com,SMB,Lucknow,Uttar Pradesh,60,Product_0060,Grocery,Global Supply Co,2467.18,2025-11-13,1,2314.34,2314.34,Cash on Delivery,Delivered,5
+2338,180,Customer_0180,customer0180@example.com,Consumer,Jaipur,Rajasthan,47,Product_0047,Mobile Accessories,Prime Distributors,2032.55,2025-11-13,2,2081.15,4162.3,Credit Card,Shipped,29
+19422,693,Customer_0693,customer0693@example.com,Corporate,Bhubaneswar,Odisha,82,Product_0082,Office Supplies,ABC Traders,2126.14,2025-11-13,2,2098.3,4196.6,Wallet,Returned,21
+27319,508,Customer_0508,customer0508@example.com,SMB,Chennai,Tamil Nadu,65,Product_0065,Mobile Accessories,Smart Retail Supply,3794.87,2025-11-13,3,3773.49,11320.47,Cash on Delivery,Shipped,32
+119191,373,Customer_0373,customer0373@example.com,Premium,Kolkata,West Bengal,138,Product_0138,Grocery,ABC Traders,200.78,2025-11-13,2,192.67,385.34,Debit Card,Delivered,17
+19799,155,Customer_0155,customer0155@example.com,Consumer,Kolkata,West Bengal,97,Product_0097,Furniture,ABC Traders,2925.02,2025-11-13,4,2978.98,11915.92,Cash on Delivery,Delivered,21
+81692,834,Customer_0834,customer0834@example.com,Consumer,Mumbai,Maharashtra,8,Product_0008,Furniture,ABC Traders,11613.26,2025-11-13,1,10454.69,10454.69,Cash on Delivery,Returned,6
+30446,98,Customer_0098,customer0098@example.com,Consumer,Lucknow,Uttar Pradesh,179,Product_0179,Furniture,ABC Traders,76670.82,2025-11-13,1,66675.51,66675.51,UPI,Cancelled,29
+83149,857,Customer_0857,customer0857@example.com,Consumer,Chennai,Tamil Nadu,172,Product_0172,Mobile Accessories,Global Supply Co,1366.64,2025-11-13,1,1195.34,1195.34,UPI,Processing,14
+62639,506,Customer_0506,customer0506@example.com,Consumer,Ahmedabad,Gujarat,50,Product_0050,Fashion,Smart Retail Supply,9330.77,2025-11-13,2,9550.7,19101.4,Net Banking,Delivered,24
+14000,637,Customer_0637,customer0637@example.com,Consumer,Chennai,Tamil Nadu,38,Product_0038,Furniture,Prime Distributors,49502.61,2025-11-13,1,49485.73,49485.73,Cash on Delivery,Shipped,35
+125219,552,Customer_0552,customer0552@example.com,Consumer,Gurugram,Haryana,92,Product_0092,Sports,Smart Retail Supply,4787.52,2025-11-13,5,4223.69,21118.45,UPI,Delivered,15
+61019,591,Customer_0591,customer0591@example.com,Premium,Surat,Gujarat,164,Product_0164,Mobile Accessories,ABC Traders,3473.29,2025-11-13,4,3090.76,12363.04,Net Banking,Delivered,20
+128222,159,Customer_0159,customer0159@example.com,Consumer,Jaipur,Rajasthan,150,Product_0150,Sports,Metro Wholesale,12841.05,2025-11-13,5,11752.75,58763.75,Cash on Delivery,Delivered,41
+139029,203,Customer_0203,customer0203@example.com,Consumer,Ahmedabad,Gujarat,133,Product_0133,Sports,Prime Distributors,6568.79,2025-11-13,1,6893.02,6893.02,Wallet,Shipped,32
+144385,488,Customer_0488,customer0488@example.com,Consumer,Jaipur,Rajasthan,38,Product_0038,Furniture,Prime Distributors,49502.61,2025-11-13,1,47924.33,47924.33,Wallet,Delivered,13
+82861,340,Customer_0340,customer0340@example.com,SMB,Visakhapatnam,Andhra Pradesh,33,Product_0033,Electronics,ABC Traders,60082.35,2025-11-13,1,55421.57,55421.57,UPI,Returned,21
+127981,772,Customer_0772,customer0772@example.com,SMB,Visakhapatnam,Andhra Pradesh,129,Product_0129,Sports,Global Supply Co,8811.46,2025-11-13,1,7991.06,7991.06,Credit Card,Delivered,3
+30685,886,Customer_0886,customer0886@example.com,Consumer,Bhopal,Madhya Pradesh,166,Product_0166,Office Supplies,Smart Retail Supply,1284.8,2025-11-13,2,1335.1,2670.2,UPI,Shipped,47
+60994,614,Customer_0614,customer0614@example.com,Consumer,Gurugram,Haryana,163,Product_0163,Grocery,Smart Retail Supply,1673.08,2025-11-13,2,1636.11,3272.22,UPI,Returned,39
+19989,377,Customer_0377,customer0377@example.com,Corporate,Bhopal,Madhya Pradesh,126,Product_0126,Office Supplies,ABC Traders,634.45,2025-11-13,6,615.06,3690.36,Net Banking,Delivered,14
+127169,257,Customer_0257,customer0257@example.com,Corporate,Lucknow,Uttar Pradesh,58,Product_0058,Home Appliances,Global Supply Co,28576.51,2025-11-13,8,28479.77,227838.16,UPI,Processing,8
+97097,158,Customer_0158,customer0158@example.com,SMB,Indore,Madhya Pradesh,23,Product_0023,Home Appliances,Global Supply Co,58516.35,2025-11-13,4,56108.18,224432.72,UPI,Delivered,1
+80461,216,Customer_0216,customer0216@example.com,Corporate,Delhi,Delhi,152,Product_0152,Home Appliances,Prime Distributors,36179.84,2025-11-13,4,33545.98,134183.92,Net Banking,Shipped,4
+58386,413,Customer_0413,customer0413@example.com,Consumer,Delhi,Delhi,103,Product_0103,Mobile Accessories,National Suppliers,2265.26,2025-11-13,4,1989.51,7958.04,Credit Card,Delivered,46
+73165,990,Customer_0990,customer0990@example.com,Corporate,Kochi,Kerala,39,Product_0039,Grocery,Global Supply Co,763.27,2025-11-13,1,745.0,745.0,UPI,Delivered,37
+110263,300,Customer_0300,customer0300@example.com,Corporate,Hyderabad,Telangana,109,Product_0109,Mobile Accessories,Smart Retail Supply,4975.8,2025-11-13,1,4397.34,4397.34,UPI,Processing,32
+23821,179,Customer_0179,customer0179@example.com,SMB,Bhubaneswar,Odisha,53,Product_0053,Mobile Accessories,Global Supply Co,4836.08,2025-11-13,1,4955.93,4955.93,Debit Card,Delivered,41
+100739,453,Customer_0453,customer0453@example.com,Consumer,Ahmedabad,Gujarat,16,Product_0016,Home Appliances,Metro Wholesale,60510.53,2025-11-13,3,57528.98,172586.94,UPI,Shipped,36
+97382,651,Customer_0651,customer0651@example.com,Consumer,Ahmedabad,Gujarat,66,Product_0066,Grocery,ABC Traders,1283.96,2025-11-13,1,1119.57,1119.57,Debit Card,Cancelled,26
+78733,43,Customer_0043,customer0043@example.com,Consumer,Bhopal,Madhya Pradesh,176,Product_0176,Mobile Accessories,ABC Traders,3070.28,2025-11-13,1,3058.42,3058.42,UPI,Delivered,12
+22718,630,Customer_0630,customer0630@example.com,SMB,Gurugram,Haryana,186,Product_0186,Electronics,Prime Distributors,4354.52,2025-11-13,3,3802.1,11406.3,Debit Card,Delivered,45
+100676,904,Customer_0904,customer0904@example.com,Consumer,Patna,Bihar,12,Product_0012,Furniture,National Suppliers,44707.9,2025-11-13,5,42355.05,211775.25,Credit Card,Delivered,14
+77906,591,Customer_0591,customer0591@example.com,Premium,Surat,Gujarat,191,Product_0191,Electronics,ABC Traders,29248.99,2025-11-13,2,24873.51,49747.02,Cash on Delivery,Delivered,41
+17828,934,Customer_0934,customer0934@example.com,Consumer,Nagpur,Maharashtra,139,Product_0139,Fashion,Prime Distributors,2292.73,2025-11-13,3,2404.5,7213.5,Credit Card,Delivered,32
+106039,854,Customer_0854,customer0854@example.com,Premium,Chennai,Tamil Nadu,106,Product_0106,Office Supplies,National Suppliers,1321.9,2025-11-13,3,1170.8,3512.4,UPI,Delivered,21
+125435,136,Customer_0136,customer0136@example.com,Consumer,Noida,Uttar Pradesh,100,Product_0100,Home Appliances,ABC Traders,49464.89,2025-11-13,3,49228.28,147684.84,Credit Card,Delivered,19
+39981,875,Customer_0875,customer0875@example.com,Consumer,Lucknow,Uttar Pradesh,39,Product_0039,Grocery,Global Supply Co,763.27,2025-11-13,6,757.0,4542.0,Credit Card,Returned,15
+96625,362,Customer_0362,customer0362@example.com,Consumer,Patna,Bihar,77,Product_0077,Fashion,Smart Retail Supply,10366.05,2025-11-13,2,8955.41,17910.82,Debit Card,Delivered,50
+128371,99,Customer_0099,customer0099@example.com,Consumer,Nagpur,Maharashtra,186,Product_0186,Electronics,Prime Distributors,4354.52,2025-11-13,1,3895.77,3895.77,Credit Card,Delivered,5
+21276,646,Customer_0646,customer0646@example.com,SMB,Noida,Uttar Pradesh,108,Product_0108,Electronics,Metro Wholesale,71931.11,2025-11-13,2,71709.57,143419.14,Net Banking,Shipped,32
+115913,197,Customer_0197,customer0197@example.com,Consumer,Noida,Uttar Pradesh,139,Product_0139,Fashion,Prime Distributors,2292.73,2025-11-13,2,2126.17,4252.34,UPI,Delivered,6
+118393,79,Customer_0079,customer0079@example.com,Consumer,Indore,Madhya Pradesh,84,Product_0084,Furniture,National Suppliers,10688.51,2025-11-13,1,9280.43,9280.43,Wallet,Delivered,16
+86050,333,Customer_0333,customer0333@example.com,Premium,Noida,Uttar Pradesh,19,Product_0019,Electronics,Metro Wholesale,28929.06,2025-11-13,2,29733.99,59467.98,Debit Card,Shipped,6
+146819,722,Customer_0722,customer0722@example.com,Corporate,Bhubaneswar,Odisha,155,Product_0155,Furniture,Global Supply Co,45278.6,2025-11-13,1,43074.31,43074.31,UPI,Delivered,41
+148862,434,Customer_0434,customer0434@example.com,Premium,Mumbai,Maharashtra,73,Product_0073,Electronics,National Suppliers,69629.06,2025-11-13,8,64253.06,514024.48,Debit Card,Delivered,3
+36616,362,Customer_0362,customer0362@example.com,Consumer,Patna,Bihar,200,Product_0200,Furniture,Prime Distributors,71823.7,2025-11-13,1,62283.91,62283.91,Debit Card,Shipped,43
+55403,657,Customer_0657,customer0657@example.com,Consumer,Kochi,Kerala,172,Product_0172,Mobile Accessories,Global Supply Co,1366.64,2025-11-13,2,1335.44,2670.88,Debit Card,Delivered,46
+98306,738,Customer_0738,customer0738@example.com,SMB,Noida,Uttar Pradesh,170,Product_0170,Office Supplies,Global Supply Co,1014.35,2025-11-13,6,1029.97,6179.82,UPI,Cancelled,48
+137218,725,Customer_0725,customer0725@example.com,Consumer,Kochi,Kerala,43,Product_0043,Electronics,Global Supply Co,31364.97,2025-11-13,1,29094.59,29094.59,Wallet,Returned,2
+22518,938,Customer_0938,customer0938@example.com,Consumer,Mumbai,Maharashtra,16,Product_0016,Home Appliances,Metro Wholesale,60510.53,2025-11-13,2,55793.07,111586.14,UPI,Delivered,36
+148109,521,Customer_0521,customer0521@example.com,SMB,Gurugram,Haryana,197,Product_0197,Home Appliances,Metro Wholesale,9106.47,2025-11-13,1,8719.5,8719.5,Wallet,Delivered,27
+98796,933,Customer_0933,customer0933@example.com,SMB,Delhi,Delhi,136,Product_0136,Sports,National Suppliers,5701.18,2025-11-13,5,5327.66,26638.3,Cash on Delivery,Cancelled,44
+68647,897,Customer_0897,customer0897@example.com,Consumer,Jaipur,Rajasthan,179,Product_0179,Furniture,ABC Traders,76670.82,2025-11-13,2,73095.31,146190.62,Credit Card,Processing,48
+54143,125,Customer_0125,customer0125@example.com,Corporate,Patna,Bihar,174,Product_0174,Furniture,Global Supply Co,15619.88,2025-11-13,1,14180.69,14180.69,UPI,Delivered,2
+122364,541,Customer_0541,customer0541@example.com,Consumer,Bhopal,Madhya Pradesh,29,Product_0029,Office Supplies,Smart Retail Supply,1050.1,2025-11-13,4,980.21,3920.84,Credit Card,Delivered,42
+145185,125,Customer_0125,customer0125@example.com,Corporate,Patna,Bihar,3,Product_0003,Sports,National Suppliers,5018.17,2025-11-13,4,5221.17,20884.68,Wallet,Delivered,7
+38350,175,Customer_0175,customer0175@example.com,Consumer,Lucknow,Uttar Pradesh,79,Product_0079,Furniture,Smart Retail Supply,39269.47,2025-11-13,1,40102.69,40102.69,Net Banking,Shipped,17
+128807,136,Customer_0136,customer0136@example.com,Consumer,Noida,Uttar Pradesh,34,Product_0034,Grocery,Smart Retail Supply,2194.38,2025-11-13,2,2197.25,4394.5,Debit Card,Delivered,28
+75962,479,Customer_0479,customer0479@example.com,Consumer,Lucknow,Uttar Pradesh,8,Product_0008,Furniture,ABC Traders,11613.26,2025-11-13,2,12147.8,24295.6,UPI,Delivered,27
+25415,465,Customer_0465,customer0465@example.com,Consumer,Hyderabad,Telangana,109,Product_0109,Mobile Accessories,Smart Retail Supply,4975.8,2025-11-13,3,5033.92,15101.76,Net Banking,Delivered,3
+126847,395,Customer_0395,customer0395@example.com,Corporate,Bhopal,Madhya Pradesh,29,Product_0029,Office Supplies,Smart Retail Supply,1050.1,2025-11-13,2,999.42,1998.84,UPI,Delivered,6
+98003,813,Customer_0813,customer0813@example.com,SMB,Lucknow,Uttar Pradesh,161,Product_0161,Home Appliances,Smart Retail Supply,31673.99,2025-11-13,1,27199.75,27199.75,UPI,Shipped,42
+18247,899,Customer_0899,customer0899@example.com,Corporate,Bengaluru,Karnataka,51,Product_0051,Fashion,Prime Distributors,4732.76,2025-11-13,1,4787.09,4787.09,UPI,Delivered,36
+7250,789,Customer_0789,customer0789@example.com,SMB,Jaipur,Rajasthan,188,Product_0188,Mobile Accessories,Global Supply Co,498.53,2025-11-13,5,478.31,2391.55,UPI,Delivered,6
+113376,766,Customer_0766,customer0766@example.com,Consumer,Kochi,Kerala,149,Product_0149,Office Supplies,Metro Wholesale,216.05,2025-11-13,5,186.51,932.55,UPI,Shipped,14
+86839,798,Customer_0798,customer0798@example.com,Corporate,Ahmedabad,Gujarat,171,Product_0171,Furniture,National Suppliers,29229.55,2025-11-13,8,28440.28,227522.24,Cash on Delivery,Delivered,17
+19855,224,Customer_0224,customer0224@example.com,SMB,Chennai,Tamil Nadu,49,Product_0049,Mobile Accessories,Prime Distributors,2739.44,2025-11-13,2,2509.89,5019.78,UPI,Shipped,48
+1972,939,Customer_0939,customer0939@example.com,Consumer,Ahmedabad,Gujarat,177,Product_0177,Mobile Accessories,Smart Retail Supply,798.86,2025-11-13,3,717.65,2152.95,UPI,Shipped,11
+4849,403,Customer_0403,customer0403@example.com,Consumer,Noida,Uttar Pradesh,17,Product_0017,Grocery,ABC Traders,2370.31,2025-11-13,2,2109.52,4219.04,UPI,Processing,26
+113098,538,Customer_0538,customer0538@example.com,Consumer,Mumbai,Maharashtra,37,Product_0037,Furniture,Global Supply Co,34730.11,2025-11-13,4,33236.54,132946.16,Debit Card,Processing,48
+147853,675,Customer_0675,customer0675@example.com,SMB,Nagpur,Maharashtra,173,Product_0173,Furniture,Metro Wholesale,34441.63,2025-11-13,1,34555.68,34555.68,Credit Card,Delivered,8
+51695,906,Customer_0906,customer0906@example.com,Consumer,Bhopal,Madhya Pradesh,164,Product_0164,Mobile Accessories,ABC Traders,3473.29,2025-11-13,5,3026.23,15131.15,Credit Card,Processing,6
+106374,343,Customer_0343,customer0343@example.com,Premium,Nagpur,Maharashtra,62,Product_0062,Fashion,Metro Wholesale,1385.59,2025-11-13,1,1278.39,1278.39,UPI,Delivered,2
+46085,359,Customer_0359,customer0359@example.com,Corporate,Bengaluru,Karnataka,174,Product_0174,Furniture,Global Supply Co,15619.88,2025-11-13,1,16330.4,16330.4,Cash on Delivery,Delivered,39
+100135,155,Customer_0155,customer0155@example.com,Consumer,Kolkata,West Bengal,39,Product_0039,Grocery,Global Supply Co,763.27,2025-11-13,3,789.68,2369.04,Wallet,Delivered,26
+1460,234,Customer_0234,customer0234@example.com,Consumer,Kochi,Kerala,117,Product_0117,Electronics,ABC Traders,40106.07,2025-11-13,1,35948.37,35948.37,UPI,Delivered,38
+33668,194,Customer_0194,customer0194@example.com,Consumer,Gurugram,Haryana,130,Product_0130,Grocery,Smart Retail Supply,960.54,2025-11-13,1,860.77,860.77,Cash on Delivery,Processing,46
+48360,23,Customer_0023,customer0023@example.com,Corporate,Pune,Maharashtra,84,Product_0084,Furniture,National Suppliers,10688.51,2025-11-13,3,11131.23,33393.69,Cash on Delivery,Processing,23
+142265,854,Customer_0854,customer0854@example.com,Premium,Chennai,Tamil Nadu,80,Product_0080,Fashion,Global Supply Co,2500.82,2025-11-13,2,2525.21,5050.42,UPI,Delivered,5
+137018,757,Customer_0757,customer0757@example.com,Premium,Bhopal,Madhya Pradesh,147,Product_0147,Mobile Accessories,Prime Distributors,581.3,2025-11-13,2,520.49,1040.98,Debit Card,Cancelled,36
+36196,524,Customer_0524,customer0524@example.com,Consumer,Surat,Gujarat,37,Product_0037,Furniture,Global Supply Co,34730.11,2025-11-13,2,29726.51,59453.02,Credit Card,Delivered,41
+70827,995,Customer_0995,customer0995@example.com,Consumer,Jaipur,Rajasthan,93,Product_0093,Office Supplies,Smart Retail Supply,932.42,2025-11-13,3,920.59,2761.77,Credit Card,Processing,1
+144411,464,Customer_0464,customer0464@example.com,Corporate,Kolkata,West Bengal,42,Product_0042,Mobile Accessories,Prime Distributors,1384.56,2025-11-13,2,1265.79,2531.58,Debit Card,Delivered,12
+108708,296,Customer_0296,customer0296@example.com,Consumer,Jaipur,Rajasthan,97,Product_0097,Furniture,ABC Traders,2925.02,2025-11-13,4,2667.04,10668.16,Net Banking,Cancelled,24
+78597,658,Customer_0658,customer0658@example.com,Consumer,Nagpur,Maharashtra,76,Product_0076,Home Appliances,National Suppliers,14997.98,2025-11-13,3,15155.2,45465.6,UPI,Delivered,3
+24395,523,Customer_0523,customer0523@example.com,SMB,Pune,Maharashtra,78,Product_0078,Sports,Prime Distributors,9813.87,2025-11-13,3,8598.09,25794.27,Net Banking,Delivered,18
+43655,88,Customer_0088,customer0088@example.com,Consumer,Noida,Uttar Pradesh,181,Product_0181,Fashion,Metro Wholesale,2062.03,2025-11-13,2,1823.5,3647.0,UPI,Delivered,14
+92267,213,Customer_0213,customer0213@example.com,Consumer,Kochi,Kerala,180,Product_0180,Electronics,Prime Distributors,19612.83,2025-11-13,6,19065.38,114392.28,UPI,Delivered,45
+103011,842,Customer_0842,customer0842@example.com,Premium,Lucknow,Uttar Pradesh,199,Product_0199,Grocery,ABC Traders,1503.22,2025-11-13,4,1443.15,5772.6,UPI,Delivered,10
+133816,50,Customer_0050,customer0050@example.com,Consumer,Kochi,Kerala,162,Product_0162,Grocery,Metro Wholesale,2219.25,2025-11-13,3,2298.72,6896.16,UPI,Delivered,25
+140156,695,Customer_0695,customer0695@example.com,Consumer,Bengaluru,Karnataka,4,Product_0004,Furniture,Smart Retail Supply,53918.06,2025-11-13,3,48169.13,144507.39,Cash on Delivery,Delivered,31
+95638,266,Customer_0266,customer0266@example.com,Premium,Indore,Madhya Pradesh,105,Product_0105,Fashion,National Suppliers,6404.06,2025-11-13,3,5678.88,17036.64,UPI,Delivered,40
+35868,105,Customer_0105,customer0105@example.com,Consumer,Kochi,Kerala,35,Product_0035,Office Supplies,ABC Traders,452.59,2025-11-13,3,415.82,1247.46,UPI,Delivered,8
+128471,781,Customer_0781,customer0781@example.com,Consumer,Patna,Bihar,129,Product_0129,Sports,Global Supply Co,8811.46,2025-11-13,4,8211.93,32847.72,UPI,Delivered,37
+15848,522,Customer_0522,customer0522@example.com,SMB,Mumbai,Maharashtra,124,Product_0124,Electronics,Smart Retail Supply,78893.56,2025-11-13,5,69033.72,345168.6,Net Banking,Delivered,6
+55506,577,Customer_0577,customer0577@example.com,Premium,Bhubaneswar,Odisha,8,Product_0008,Furniture,ABC Traders,11613.26,2025-11-13,1,11153.26,11153.26,UPI,Processing,49
+107920,155,Customer_0155,customer0155@example.com,Consumer,Kolkata,West Bengal,124,Product_0124,Electronics,Smart Retail Supply,78893.56,2025-11-13,2,76071.99,152143.98,UPI,Delivered,42
+74364,690,Customer_0690,customer0690@example.com,Premium,Kochi,Kerala,26,Product_0026,Grocery,Prime Distributors,195.87,2025-11-13,3,182.86,548.58,UPI,Delivered,34
+89007,248,Customer_0248,customer0248@example.com,Premium,Kolkata,West Bengal,118,Product_0118,Grocery,Metro Wholesale,2300.54,2025-11-13,6,2206.61,13239.66,UPI,Delivered,5
+90729,527,Customer_0527,customer0527@example.com,Consumer,Bhubaneswar,Odisha,59,Product_0059,Electronics,Global Supply Co,56106.82,2025-11-13,1,57538.38,57538.38,Cash on Delivery,Shipped,47
+98370,31,Customer_0031,customer0031@example.com,Corporate,Ahmedabad,Gujarat,126,Product_0126,Office Supplies,ABC Traders,634.45,2025-11-13,1,627.3,627.3,Debit Card,Delivered,31
+113058,205,Customer_0205,customer0205@example.com,Corporate,Ahmedabad,Gujarat,146,Product_0146,Fashion,National Suppliers,10075.7,2025-11-13,1,10575.43,10575.43,Debit Card,Delivered,35
+25689,964,Customer_0964,customer0964@example.com,Consumer,Chennai,Tamil Nadu,123,Product_0123,Office Supplies,Prime Distributors,825.05,2025-11-13,2,750.14,1500.28,UPI,Shipped,42
+132634,68,Customer_0068,customer0068@example.com,Consumer,Gurugram,Haryana,52,Product_0052,Electronics,Prime Distributors,47331.54,2025-11-13,2,42148.2,84296.4,Cash on Delivery,Delivered,2
+140179,611,Customer_0611,customer0611@example.com,SMB,Surat,Gujarat,185,Product_0185,Home Appliances,ABC Traders,64182.49,2025-11-13,2,55363.05,110726.1,UPI,Delivered,22
+50659,842,Customer_0842,customer0842@example.com,Premium,Lucknow,Uttar Pradesh,88,Product_0088,Grocery,ABC Traders,752.01,2025-11-13,10,749.03,7490.3,UPI,Cancelled,18
+79312,108,Customer_0108,customer0108@example.com,Consumer,Lucknow,Uttar Pradesh,34,Product_0034,Grocery,Smart Retail Supply,2194.38,2025-11-13,10,2205.28,22052.8,UPI,Delivered,13
+14326,821,Customer_0821,customer0821@example.com,Corporate,Hyderabad,Telangana,130,Product_0130,Grocery,Smart Retail Supply,960.54,2025-11-13,4,894.43,3577.72,Cash on Delivery,Cancelled,7
+123747,602,Customer_0602,customer0602@example.com,SMB,Kochi,Kerala,59,Product_0059,Electronics,Global Supply Co,56106.82,2025-11-13,6,54372.0,326232.0,Debit Card,Delivered,1
+97286,265,Customer_0265,customer0265@example.com,Consumer,Visakhapatnam,Andhra Pradesh,160,Product_0160,Office Supplies,Prime Distributors,202.66,2025-11-13,8,191.29,1530.32,Net Banking,Delivered,7
+5168,200,Customer_0200,customer0200@example.com,Corporate,Visakhapatnam,Andhra Pradesh,22,Product_0022,Mobile Accessories,National Suppliers,1071.72,2025-11-13,1,1079.99,1079.99,Credit Card,Delivered,12
+47599,843,Customer_0843,customer0843@example.com,Consumer,Bhubaneswar,Odisha,84,Product_0084,Furniture,National Suppliers,10688.51,2025-11-13,2,10278.27,20556.54,UPI,Returned,27
+23763,745,Customer_0745,customer0745@example.com,SMB,Kochi,Kerala,28,Product_0028,Office Supplies,ABC Traders,1978.5,2025-11-13,1,1929.23,1929.23,Credit Card,Delivered,25
+21353,782,Customer_0782,customer0782@example.com,Consumer,Nagpur,Maharashtra,2,Product_0002,Fashion,Global Supply Co,2475.9,2025-11-13,1,2169.56,2169.56,Debit Card,Shipped,5
+39602,109,Customer_0109,customer0109@example.com,Consumer,Ahmedabad,Gujarat,104,Product_0104,Electronics,National Suppliers,26511.78,2025-11-13,3,27746.97,83240.91,Net Banking,Delivered,16
+44195,420,Customer_0420,customer0420@example.com,Corporate,Jaipur,Rajasthan,133,Product_0133,Sports,Prime Distributors,6568.79,2025-11-13,3,6732.89,20198.67,Debit Card,Delivered,15
+102878,194,Customer_0194,customer0194@example.com,Consumer,Gurugram,Haryana,143,Product_0143,Furniture,Metro Wholesale,65827.71,2025-11-13,5,67637.24,338186.2,Net Banking,Delivered,44
+108370,221,Customer_0221,customer0221@example.com,SMB,Mumbai,Maharashtra,45,Product_0045,Home Appliances,Global Supply Co,17908.99,2025-11-13,1,16970.63,16970.63,Credit Card,Delivered,21
+136646,616,Customer_0616,customer0616@example.com,Corporate,Nagpur,Maharashtra,89,Product_0089,Electronics,Smart Retail Supply,77787.96,2025-11-13,10,66220.34,662203.4,UPI,Delivered,2
+41778,801,Customer_0801,customer0801@example.com,Consumer,Hyderabad,Telangana,138,Product_0138,Grocery,ABC Traders,200.78,2025-11-13,3,184.3,552.9,UPI,Processing,21
+106512,341,Customer_0341,customer0341@example.com,Corporate,Nagpur,Maharashtra,177,Product_0177,Mobile Accessories,Smart Retail Supply,798.86,2025-11-13,3,758.67,2276.01,UPI,Delivered,6
+36684,978,Customer_0978,customer0978@example.com,Consumer,Indore,Madhya Pradesh,144,Product_0144,Mobile Accessories,ABC Traders,472.03,2025-11-13,2,461.55,923.1,Wallet,Delivered,34
+16015,648,Customer_0648,customer0648@example.com,SMB,Jaipur,Rajasthan,194,Product_0194,Office Supplies,Global Supply Co,2974.17,2025-11-13,1,3022.01,3022.01,Credit Card,Delivered,15
+19817,351,Customer_0351,customer0351@example.com,Consumer,Jaipur,Rajasthan,33,Product_0033,Electronics,ABC Traders,60082.35,2025-11-13,1,58597.63,58597.63,Debit Card,Processing,36

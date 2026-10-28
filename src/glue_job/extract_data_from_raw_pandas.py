@@ -4,6 +4,7 @@ from pathlib import Path
 from datetime import datetime
 
 import pandas as pd
+from utils.data_quality import validate_orders_data
 
 
 # ============================================================
@@ -418,13 +419,17 @@ def clean_column_names(df):
             regex=False
         )
     )
-
+    
     return df
+
+
 
 
 # ============================================================
 # FIND CSV FILES
 # ============================================================
+
+
 
 def find_csv_files(dataset_path):
 
@@ -619,8 +624,9 @@ def normalize_id_columns(df):
                 df[column].notna(),
                 None
             )
-
     return df
+
+
 
 
 # ============================================================
@@ -2231,7 +2237,7 @@ def process_orders(
             latest_time,
             selected_files
         )
-
+   
     # ========================================================
     # REQUIRED COLUMNS
     # ========================================================
@@ -2383,6 +2389,8 @@ def process_orders(
     # ========================================================
     # ORDER VALIDATION
     # ========================================================
+    quality_report = validate_orders_data(df)
+    print("#####################################",quality_report)
 
     invalid_mask = (
         df["order_id"].isna()
@@ -2676,6 +2684,7 @@ def process_orders(
         "orders",
         "order_id"
     )
+    
 
     return (
         len(valid_df),
@@ -3248,6 +3257,9 @@ def main():
 # ============================================================
 # PROGRAM ENTRY POINT
 # ============================================================
+
+
+
 
 if __name__ == "__main__":
 
