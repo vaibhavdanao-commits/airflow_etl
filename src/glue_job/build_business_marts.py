@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-from pathlib import Path
 import polars as pl
-from pyiceberg.catalog import load_catalog
 from pyiceberg.schema import Schema
 from pyiceberg.types import (
     BooleanType, DateType, DoubleType, FloatType, IntegerType,
@@ -10,30 +8,12 @@ from pyiceberg.types import (
 )
 
 
-_THIS_FILE = Path(__file__).resolve()
-PROJECT_ROOT = next(
-    (p for p in _THIS_FILE.parents if (p / "Warehouse").exists() and (p / "curated").exists()),
-    _THIS_FILE.parent,
-)
-WAREHOUSE_FOLDER = PROJECT_ROOT / "Warehouse"
-CATALOG_DB = WAREHOUSE_FOLDER / "dimensional_model_catalog.db"
-DIMENSIONAL_WAREHOUSE = WAREHOUSE_FOLDER / "dimensional_model"
-WAREHOUSE_FOLDER.mkdir(parents=True, exist_ok=True)
-DIMENSIONAL_WAREHOUSE.mkdir(parents=True, exist_ok=True)
-WAREHOUSE_URI = DIMENSIONAL_WAREHOUSE.resolve().as_uri()
-CATALOG_NAME = "dimensional_model"
-NAMESPACE = "star_schema"
-
-# Add actual mappings here if region is not available in curated/orders or dim_store.
-# Example: REGION_BY_STORE = {"STORE_001": "West", "STORE_002": "South"}
-REGION_BY_STORE: dict[str, str] = {}
-
-catalog = load_catalog(
-    CATALOG_NAME,
-    type="sql",
-    uri=f"sqlite:///{CATALOG_DB}",
-    warehouse=WAREHOUSE_URI,
-    **{"py-io-impl": "pyiceberg.io.fsspec.FsspecFileIO"},
+from config import (
+    PROJECT_ROOT,
+    CATALOG_DB,
+    NAMESPACE,
+    REGION_BY_STORE,
+    catalog,
 )
 
 

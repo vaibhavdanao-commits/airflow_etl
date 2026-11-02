@@ -1,481 +1,492 @@
+# ============================================================
+# sync_iceberg_to_sqlite.py
+# Full refresh: Apache Iceberg -> SQLite
+# Project: D:\airflow_etl
+# ============================================================
 
+from __future__ import annotations
+
+import json
+import sqlite3
 import sys
+from datetime import date, datetime
+from decimal import Decimal
+from typing import Any
 
-if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
-    sys.stdout.reconfigure(encoding="utf-8")
+import numpy as np
+import pandas as pd
 
-if sys.stderr.encoding and sys.stderr.encoding.lower() != "utf-8":
-    sys.stderr.reconfigure(encoding="utf-8")
-
-from pathlib import Path
-
-import polars as pl
-import duckdb
-from pyiceberg.catalog import load_catalog
-
-
-# ============================================================
-# 1. PROJECT CONFIGURATION
-# ============================================================
-
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-
-WAREHOUSE_FOLDER = PROJECT_ROOT / "Warehouse"
-
-CATALOG_DB = WAREHOUSE_FOLDER / "dimensional_model_catalog.db"
-
-DIMENSIONAL_WAREHOUSE_FOLDER = (
-    WAREHOUSE_FOLDER / "dimensional_model"
-)
-
-WAREHOUSE_URI = DIMENSIONAL_WAREHOUSE_FOLDER.resolve().as_uri()
-
-NAMESPACE = "star_schema"
-
-OUTPUT_FOLDER = PROJECT_ROOT / "task13_results"
-OUTPUT_FOLDER.mkdir(parents=True, exist_ok=True)
-
-
-# ============================================================
-# 2. LOAD ICEBERG CATALOG
-# ============================================================
-
-catalog = load_catalog(
-    "dimensional_model",
-    type="sql",
-    uri=f"sqlite:///{CATALOG_DB}",
-    warehouse=WAREHOUSE_URI,
-    **{
-        "py-io-impl": "pyiceberg.io.fsspec.FsspecFileIO"
-    },
+from config import (
+    PROJECT_ROOT,
+    WAREHOUSE_FOLDER,
+    SYNC_ICEBERG_CATALOG_DB,
+    SYNC_ICEBERG_WAREHOUSE,
+    SYNC_SQLITE_DB,
+    SYNC_CATALOG_NAME,
+    SYNC_NAMESPACE,
+    SYNC_TABLES_TO_IMPORT,
+    SYNC_STAGING_PREFIX,
+    sync_iceberg_catalog,
 )
 
 
 # ============================================================
-# 3. TABLE IDENTIFIERS
+# 1. WINDOWS CONSOLE ENCODING
 # ============================================================
 
-DIM_CUSTOMER = f"{NAMESPACE}.dim_customer"
-DIM_PRODUCT = f"{NAMESPACE}.dim_product"
-DIM_DATE = f"{NAMESPACE}.dim_date"
-FACT_SALES = f"{NAMESPACE}.fact_sales"
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except (AttributeError, OSError):
+    pass
 
 
 # ============================================================
-# 4. READ ICEBERG TABLES
+# 2. SHARED PROJECT CONFIGURATION
+# Paths and Iceberg settings are maintained in config.py.
 # ============================================================
 
-def read_iceberg_table(table_name: str) -> pl.DataFrame:
+ICEBERG_CATALOG_DB = SYNC_ICEBERG_CATALOG_DB
+ICEBERG_WAREHOUSE = SYNC_ICEBERG_WAREHOUSE
+SQLITE_DB = SYNC_SQLITE_DB
+CATALOG_NAME = SYNC_CATALOG_NAME
+NAMESPACE = SYNC_NAMESPACE
+TABLES_TO_IMPORT = SYNC_TABLES_TO_IMPORT
+STAGING_PREFIX = SYNC_STAGING_PREFIX
 
-    print(f"\nReading Iceberg table: {table_name}")
 
-    if not catalog.table_exists(table_name):
-        raise RuntimeError(f"Table does not exist: {table_name}")
+# ============================================================
+# 3. PRINT CONFIGURATION
+# ============================================================
 
-    table = catalog.load_table(table_name)
+def print_configuration() -> None:
+    print("\n" + "=" * 70)
+    print("ICEBERG TO SQLITE DATA SYNCHRONIZATION")
+    print("=" * 70)
 
-    df = pl.from_arrow(table.scan().to_arrow())
+    print(f"Project root       : {PROJECT_ROOT}")
+    print(f"Iceberg catalog DB : {ICEBERG_CATALOG_DB}")
+    print(f"Iceberg warehouse  : {ICEBERG_WAREHOUSE}")
+    print(f"SQLite database    : {SQLITE_DB}")
+    print(f"Catalog name       : {CATALOG_NAME}")
+    print(f"Namespace          : {NAMESPACE}")
 
-    print(f"Rows: {df.height:,}")
-    print(f"Columns: {df.width}")
+    print("\nTables to import:")
+    for table_name in TABLES_TO_IMPORT:
+        print(f"  - {table_name}")
+
+    print("=" * 70)
+
+
+# ============================================================
+# 4. VALIDATE PATHS
+# ============================================================
+
+def validate_paths() -> None:
+    if not PROJECT_ROOT.exists():
+        raise FileNotFoundError(
+            f"Project directory does not exist:\n{PROJECT_ROOT}"
+        )
+
+    if not ICEBERG_CATALOG_DB.exists():
+        raise FileNotFoundError(
+            "Iceberg catalog database not found:\n"
+            f"{ICEBERG_CATALOG_DB}\n\n"
+            "Check the catalog database path used in your reference "
+            "script. This script expects:\n"
+            r"D:\\airflow_etl\\Warehouse\\pyiceberg_catalog.db"
+        )
+
+    WAREHOUSE_FOLDER.mkdir(parents=True, exist_ok=True)
+
+    print("\nPath validation successful.")
+
+
+# ============================================================
+# 5. CONNECT TO EXISTING ICEBERG CATALOG
+# ============================================================
+
+def connect_iceberg_catalog():
+    print("\nConnecting to the existing Iceberg catalog...")
+    print("Iceberg catalog connection successful.")
+    return sync_iceberg_catalog
+
+
+# ============================================================
+# 6. CONVERT VALUES TO SQLITE-FRIENDLY VALUES
+# ============================================================
+
+def normalize_value(value: Any) -> Any:
+    """
+    Convert Pandas, NumPy, Arrow-derived and Python values into
+    values that SQLite can store reliably.
+    """
+
+    if value is None or value is pd.NA or value is pd.NaT:
+        return None
+
+    # NumPy scalar -> Python scalar
+    if isinstance(value, np.generic):
+        value = value.item()
+
+    # Handle missing scalar values without treating lists or
+    # dictionaries as scalar values.
+    if not isinstance(value, (list, dict, tuple, set)):
+        try:
+            missing = pd.isna(value)
+            if isinstance(missing, (bool, np.bool_)) and missing:
+                return None
+        except (TypeError, ValueError):
+            pass
+
+    # Date/time values -> ISO strings
+    if isinstance(value, (pd.Timestamp, datetime, date)):
+        return value.isoformat()
+
+    # Decimal values -> text, preserving decimal precision
+    if isinstance(value, Decimal):
+        return str(value)
+
+    # Boolean values -> SQLite integer
+    if isinstance(value, (bool, np.bool_)):
+        return int(value)
+
+    # SQLite does not natively store nested structures
+    if isinstance(value, (dict, list, tuple, set)):
+        if isinstance(value, set):
+            value = list(value)
+
+        return json.dumps(
+            value,
+            default=str,
+            ensure_ascii=False,
+        )
+
+    # Keep binary data as binary
+    if isinstance(value, (bytes, bytearray, memoryview)):
+        return bytes(value)
+
+    # SQLite supports strings, integers, floats and None
+    if isinstance(value, (str, int, float)):
+        return value
+
+    # Fallback for uncommon data types
+    return str(value)
+
+
+def normalize_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Normalize all columns before writing to SQLite.
+    """
+
+    df = df.copy()
+
+    # SQLite column names are preserved as supplied by Iceberg.
+    # Nested objects are serialized as JSON strings.
+    for column in df.columns:
+        df[column] = df[column].map(normalize_value)
 
     return df
 
 
-dim_customer = read_iceberg_table(DIM_CUSTOMER)
-dim_product = read_iceberg_table(DIM_PRODUCT)
-dim_date = read_iceberg_table(DIM_DATE)
-fact_sales = read_iceberg_table(FACT_SALES)
+# ============================================================
+# 7. LOAD ONE ICEBERG TABLE INTO PANDAS
+# ============================================================
+
+def read_iceberg_table(catalog, table_name: str) -> pd.DataFrame:
+    identifier = (NAMESPACE, table_name)
+
+    print(f"\nReading Iceberg table: {NAMESPACE}.{table_name}")
+
+    iceberg_table = catalog.load_table(identifier)
+
+    # Read the complete table. This is a full refresh, not an
+    # incremental scan based on processed-file metadata.
+    arrow_table = iceberg_table.scan().to_arrow()
+
+    df = arrow_table.to_pandas()
+
+    print(f"  Rows read    : {len(df):,}")
+    print(f"  Columns      : {len(df.columns)}")
+
+    return normalize_dataframe(df)
 
 
 # ============================================================
-# 5. VALIDATE REQUIRED COLUMNS
+# 8. OPEN SQLITE CONNECTION
 # ============================================================
 
-required_columns = {
-    "fact_sales": (
-        fact_sales,
-        [
-            "sale_id",
-            "customer_key",
-            "product_key",
-            "date_key",
-            "quantity",
-            "sales_amount",
-        ],
-    ),
-    "dim_product": (
-        dim_product,
-        [
-            "product_key",
-            "product_id",
-            "product_name",
-            "category",
-        ],
-    ),
-    "dim_customer": (
-        dim_customer,
-        [
-            "customer_key",
-            "customer_id",
-            "customer_name",
-            "city",
-        ],
-    ),
-    "dim_date": (
-        dim_date,
-        [
-            "date_key",
-            "full_date",
-        ],
-    ),
-}
+def connect_sqlite() -> sqlite3.Connection:
+    conn = sqlite3.connect(
+        str(SQLITE_DB),
+        timeout=60,
+    )
 
-for table_name, (df, columns) in required_columns.items():
-    missing = [column for column in columns if column not in df.columns]
+    conn.execute("PRAGMA busy_timeout = 60000")
+    conn.execute("PRAGMA foreign_keys = OFF")
 
-    if missing:
-        raise ValueError(
-            f"{table_name} is missing columns: {missing}"
+    # WAL helps concurrent readers while the database is updated.
+    conn.execute("PRAGMA journal_mode = WAL")
+
+    return conn
+
+
+# ============================================================
+# 9. CREATE STAGING TABLES
+# Existing production tables remain untouched at this stage.
+# ============================================================
+
+def write_staging_table(
+    df: pd.DataFrame,
+    table_name: str,
+    conn: sqlite3.Connection,
+) -> int:
+    staging_table = f"{STAGING_PREFIX}{table_name}"
+
+    print(f"Writing SQLite staging table: {staging_table}")
+
+    # Remove leftover staging table from a previous failed run.
+    conn.execute(
+        f'DROP TABLE IF EXISTS "{staging_table}"'
+    )
+
+    df.to_sql(
+        name=staging_table,
+        con=conn,
+        if_exists="replace",
+        index=False,
+        chunksize=10_000,
+    )
+
+    result = conn.execute(
+        f'SELECT COUNT(*) FROM "{staging_table}"'
+    ).fetchone()
+
+    sqlite_count = int(result[0])
+
+    expected_count = len(df)
+
+    print(f"  Expected rows: {expected_count:,}")
+    print(f"  SQLite rows  : {sqlite_count:,}")
+
+    if sqlite_count != expected_count:
+        raise RuntimeError(
+            f"Row count mismatch for {table_name}: "
+            f"Iceberg/Pandas={expected_count}, "
+            f"SQLite staging={sqlite_count}"
         )
 
-
-# ============================================================
-# 6. CREATE LOCAL SQL ENGINE
-# ============================================================
-
-con = duckdb.connect(database=":memory:")
-
-con.register("customer_df", dim_customer.to_arrow())
-con.register("product_df", dim_product.to_arrow())
-con.register("date_df", dim_date.to_arrow())
-con.register("sales_df", fact_sales.to_arrow())
-
-con.execute("CREATE TABLE dim_customer AS SELECT * FROM customer_df")
-con.execute("CREATE TABLE dim_product AS SELECT * FROM product_df")
-con.execute("CREATE TABLE dim_date AS SELECT * FROM date_df")
-con.execute("CREATE TABLE fact_sales AS SELECT * FROM sales_df")
-
-print("\nLocal SQL tables created successfully.")
+    return sqlite_count
 
 
 # ============================================================
-# 7. HELPER FUNCTION
+# 10. ATOMICALLY REPLACE TARGET TABLES
+# All target-table swaps happen inside one SQLite transaction.
 # ============================================================
 
-def run_query(title: str, sql: str, filename: str):
+def replace_target_tables(
+    conn: sqlite3.Connection,
+    row_counts: dict[str, int],
+) -> None:
+    print("\nRefreshing SQLite target tables...")
 
-    print("\n" + "=" * 100)
-    print(title)
-    print("=" * 100)
+    try:
+        conn.execute("BEGIN IMMEDIATE")
 
-    result = con.execute(sql).pl()
+        for table_name in TABLES_TO_IMPORT:
+            staging_table = f"{STAGING_PREFIX}{table_name}"
 
-    print(f"Result rows: {result.height}")
+            # Remove old target, if present.
+            conn.execute(
+                f'DROP TABLE IF EXISTS "{table_name}"'
+            )
 
-    if result.is_empty():
-        print("No records found.")
-    else:
-        print(result.head(20))
+            # Promote the staging table to the final table name.
+            conn.execute(
+                f'ALTER TABLE "{staging_table}" '
+                f'RENAME TO "{table_name}"'
+            )
 
-    output_path = OUTPUT_FOLDER / filename
-    result.write_csv(output_path)
+            print(
+                f"  Refreshed {table_name}: "
+                f"{row_counts[table_name]:,} rows"
+            )
 
-    print(f"Saved: {output_path}")
+        conn.commit()
 
-    return result
-
-
-# ============================================================
-# QUESTION 1
-# TOP 3 PRODUCTS BY REVENUE PER CATEGORY PER MONTH
-# Concepts: JOIN, CTE, SUM, ROW_NUMBER
-# ============================================================
-
-q1 = """
-WITH monthly_product_revenue AS (
-    SELECT
-        DATE_TRUNC('month', CAST(d.full_date AS DATE)) AS sales_month,
-        p.category,
-        p.product_key,
-        p.product_name,
-        SUM(f.sales_amount) AS revenue
-    FROM fact_sales f
-    INNER JOIN dim_product p
-        ON f.product_key = p.product_key
-    INNER JOIN dim_date d
-        ON f.date_key = d.date_key
-    GROUP BY
-        DATE_TRUNC('month', CAST(d.full_date AS DATE)),
-        p.category,
-        p.product_key,
-        p.product_name
-),
-ranked_products AS (
-    SELECT
-        *,
-        ROW_NUMBER() OVER (
-            PARTITION BY sales_month, category
-            ORDER BY revenue DESC, product_name
-        ) AS product_rank
-    FROM monthly_product_revenue
-)
-SELECT
-    sales_month,
-    category,
-    product_name,
-    ROUND(revenue, 2) AS revenue,
-    product_rank
-FROM ranked_products
-WHERE product_rank <= 3
-ORDER BY sales_month, category, product_rank
-"""
-
-q1_result = run_query(
-    "QUESTION 1 - TOP 3 PRODUCTS PER CATEGORY PER MONTH",
-    q1,
-    "Q1_top3_products_per_category_month.csv",
-)
+    except Exception:
+        conn.rollback()
+        raise
 
 
 # ============================================================
-# QUESTION 2
-# TOP 10 PRODUCTS BY TOTAL REVENUE
-# Concepts: JOIN, GROUP BY, SUM, ORDER BY
+# 11. CLEAN UP LEFTOVER STAGING TABLES
 # ============================================================
 
-q2 = """
-SELECT
-    p.product_id,
-    p.product_name,
-    p.category,
-    ROUND(SUM(f.sales_amount), 2) AS total_revenue,
-    SUM(f.quantity) AS units_sold
-FROM fact_sales f
-INNER JOIN dim_product p
-    ON f.product_key = p.product_key
-GROUP BY
-    p.product_id,
-    p.product_name,
-    p.category
-ORDER BY total_revenue DESC
-LIMIT 10
-"""
+def cleanup_staging_tables(
+    conn: sqlite3.Connection,
+) -> None:
+    for table_name in TABLES_TO_IMPORT:
+        staging_table = f"{STAGING_PREFIX}{table_name}"
 
-q2_result = run_query(
-    "QUESTION 2 - TOP 10 PRODUCTS BY REVENUE",
-    q2,
-    "Q2_top10_products.csv",
-)
+        conn.execute(
+            f'DROP TABLE IF EXISTS "{staging_table}"'
+        )
+
+    conn.commit()
 
 
 # ============================================================
-# QUESTION 3
-# MONTH-OVER-MONTH REVENUE
-# Concepts: CTE, aggregation, LAG
+# 12. VERIFY FINAL SQLITE TABLES
 # ============================================================
 
-q3 = """
-WITH monthly_revenue AS (
-    SELECT
-        DATE_TRUNC('month', CAST(d.full_date AS DATE)) AS sales_month,
-        SUM(f.sales_amount) AS revenue
-    FROM fact_sales f
-    INNER JOIN dim_date d
-        ON f.date_key = d.date_key
-    GROUP BY 1
-),
-revenue_comparison AS (
-    SELECT
-        sales_month,
-        revenue,
-        LAG(revenue) OVER (
-            ORDER BY sales_month
-        ) AS previous_month_revenue
-    FROM monthly_revenue
-)
-SELECT
-    sales_month,
-    ROUND(revenue, 2) AS revenue,
-    ROUND(previous_month_revenue, 2) AS previous_month_revenue,
-    ROUND(
-        100.0 * (revenue - previous_month_revenue)
-        / NULLIF(previous_month_revenue, 0),
-        2
-    ) AS growth_percent
-FROM revenue_comparison
-ORDER BY sales_month
-"""
+def verify_sqlite_tables(
+    conn: sqlite3.Connection,
+    expected_counts: dict[str, int],
+) -> None:
+    print("\n" + "=" * 70)
+    print("FINAL SQLITE VERIFICATION")
+    print("=" * 70)
 
-q3_result = run_query(
-    "QUESTION 3 - MONTH OVER MONTH REVENUE",
-    q3,
-    "Q3_monthly_revenue.csv",
-)
+    failures = []
 
+    for table_name in TABLES_TO_IMPORT:
+        result = conn.execute(
+            f'SELECT COUNT(*) FROM "{table_name}"'
+        ).fetchone()
 
-# ============================================================
-# QUESTION 4
-# CUSTOMERS WITHOUT ORDERS IN LAST 90 DAYS
-# Reference date: latest date in the sales dataset
-# Concepts: CTE, NOT EXISTS, date filtering
-# ============================================================
+        actual_count = int(result[0])
+        expected_count = expected_counts[table_name]
 
-q4 = """
-WITH latest_sales_date AS (
-    SELECT MAX(CAST(d.full_date AS DATE)) AS max_date
-    FROM fact_sales f
-    INNER JOIN dim_date d
-        ON f.date_key = d.date_key
-)
-SELECT
-    c.customer_key,
-    c.customer_id,
-    c.customer_name,
-    c.city
-FROM dim_customer c
-CROSS JOIN latest_sales_date l
-WHERE
-    ('is_current' NOT IN (
-        SELECT column_name
-        FROM information_schema.columns
-        WHERE table_name = 'dim_customer'
-    ) OR c.is_current = TRUE)
-    AND NOT EXISTS (
-        SELECT 1
-        FROM fact_sales f
-        INNER JOIN dim_date d
-            ON f.date_key = d.date_key
-        WHERE f.customer_key = c.customer_key
-          AND CAST(d.full_date AS DATE) > l.max_date - INTERVAL 90 DAY
-          AND CAST(d.full_date AS DATE) <= l.max_date
-    )
-ORDER BY c.customer_id
-"""
+        status = (
+            "PASS"
+            if actual_count == expected_count
+            else "FAIL"
+        )
 
-# Use a simpler query if your dim_customer table has no is_current column.
-if "is_current" not in dim_customer.columns:
-    q4 = """
-    WITH latest_sales_date AS (
-        SELECT MAX(CAST(full_date AS DATE)) AS max_date
-        FROM dim_date
-    )
-    SELECT
-        c.customer_key,
-        c.customer_id,
-        c.customer_name,
-        c.city
-    FROM dim_customer c
-    CROSS JOIN latest_sales_date l
-    WHERE NOT EXISTS (
-        SELECT 1
-        FROM fact_sales f
-        INNER JOIN dim_date d
-            ON f.date_key = d.date_key
-        WHERE f.customer_key = c.customer_key
-          AND CAST(d.full_date AS DATE) > l.max_date - INTERVAL 90 DAY
-          AND CAST(d.full_date AS DATE) <= l.max_date
-    )
-    ORDER BY c.customer_id
-    """
-else:
-    q4 = """
-    WITH latest_sales_date AS (
-        SELECT MAX(CAST(d.full_date AS DATE)) AS max_date
-        FROM fact_sales f
-        INNER JOIN dim_date d ON f.date_key = d.date_key
-    )
-    SELECT c.customer_key, c.customer_id, c.customer_name, c.city
-    FROM dim_customer c
-    CROSS JOIN latest_sales_date l
-    WHERE c.is_current = TRUE
-      AND NOT EXISTS (
-          SELECT 1
-          FROM fact_sales f
-          INNER JOIN dim_date d ON f.date_key = d.date_key
-          WHERE f.customer_key = c.customer_key
-            AND CAST(d.full_date AS DATE) > l.max_date - INTERVAL 90 DAY
-            AND CAST(d.full_date AS DATE) <= l.max_date
-      )
-    ORDER BY c.customer_id
-    """
+        print(
+            f"{table_name:<20} "
+            f"Rows: {actual_count:>12,} "
+            f"Expected: {expected_count:>12,} "
+            f"[{status}]"
+        )
 
-q4_result = run_query(
-    "QUESTION 4 - CUSTOMERS WITHOUT RECENT ORDERS",
-    q4,
-    "Q4_inactive_customers.csv",
-)
+        if actual_count != expected_count:
+            failures.append(table_name)
+
+    if failures:
+        raise RuntimeError(
+            "Final SQLite verification failed for: "
+            + ", ".join(failures)
+        )
+
+    print("=" * 70)
+    print("All SQLite tables verified successfully.")
 
 
 # ============================================================
-# QUESTION 5
-# QUERY PLAN AND DATE FILTERING
-# Concepts: EXPLAIN, filter pushdown, query planning
+# 13. MAIN EXECUTION
 # ============================================================
 
-q5 = """
-SELECT
-    p.category,
-    SUM(f.sales_amount) AS revenue
-FROM fact_sales f
-INNER JOIN dim_product p
-    ON f.product_key = p.product_key
-INNER JOIN dim_date d
-    ON f.date_key = d.date_key
-WHERE CAST(d.full_date AS DATE) >= DATE '2026-01-01'
-  AND CAST(d.full_date AS DATE) < DATE '2026-04-01'
-GROUP BY p.category
-"""
+def main() -> None:
+    print_configuration()
+    validate_paths()
 
-print("\n" + "=" * 100)
-print("QUESTION 5 - SQL QUERY EXECUTION PLAN")
-print("=" * 100)
+    catalog = connect_iceberg_catalog()
 
-plan = con.execute("EXPLAIN " + q5).fetchall()
-plan_text = "\n".join(str(row) for row in plan)
-print(plan_text)
+    # Validate that the configured namespace exists.
+    namespaces = catalog.list_namespaces()
 
-plan_path = OUTPUT_FOLDER / "Q5_query_execution_plan.txt"
-plan_path.write_text(plan_text, encoding="utf-8")
-print(f"Saved: {plan_path}")
+    if (NAMESPACE,) not in namespaces:
+        raise RuntimeError(
+            f"Namespace '{NAMESPACE}' was not found.\n"
+            f"Namespaces reported by the catalog: {namespaces}\n"
+            "Verify CATALOG_NAME and NAMESPACE against your "
+            "reference script."
+        )
 
-q5_result = run_query(
-    "QUESTION 5 - REVENUE FOR A DATE RANGE",
-    q5,
-    "Q5_date_filtered_revenue.csv",
-)
+    # Confirm that every requested table exists before syncing.
+    available_tables = {
+        identifier[-1]
+        for identifier in catalog.list_tables(NAMESPACE)
+    }
+
+    missing_tables = [
+        name
+        for name in TABLES_TO_IMPORT
+        if name not in available_tables
+    ]
+
+    if missing_tables:
+        raise RuntimeError(
+            "These tables were not found in the Iceberg namespace "
+            f"'{NAMESPACE}': {missing_tables}\n"
+            f"Available tables: {sorted(available_tables)}"
+        )
+
+    conn = connect_sqlite()
+
+    expected_counts: dict[str, int] = {}
+    staging_complete = False
+
+    try:
+        # Phase 1: Read all Iceberg tables and create staging tables.
+        # Existing target tables are not replaced until every table
+        # has been staged and verified.
+        for table_name in TABLES_TO_IMPORT:
+            df = read_iceberg_table(catalog, table_name)
+
+            expected_counts[table_name] = write_staging_table(
+                df=df,
+                table_name=table_name,
+                conn=conn,
+            )
+
+            del df
+
+        staging_complete = True
+
+        # Phase 2: Replace all target tables in one transaction.
+        replace_target_tables(
+            conn=conn,
+            row_counts=expected_counts,
+        )
+
+        # Phase 3: Validate the final SQLite tables.
+        verify_sqlite_tables(
+            conn=conn,
+            expected_counts=expected_counts,
+        )
+
+        print("\n" + "=" * 70)
+        print("SYNCHRONIZATION COMPLETED SUCCESSFULLY")
+        print("=" * 70)
+        print(f"SQLite database: {SQLITE_DB}")
+        print(f"Tables synced  : {len(TABLES_TO_IMPORT)}")
+
+        for table_name in TABLES_TO_IMPORT:
+            print(
+                f"  {table_name:<20} "
+                f"{expected_counts[table_name]:>12,} rows"
+            )
+
+        print("\nYour Streamlit application can now connect to:")
+        print(SQLITE_DB)
+        print("=" * 70)
+
+    finally:
+        try:
+            # If staging failed, clean up incomplete staging tables.
+            # If table replacement failed, SQLite rolls back the
+            # target-table swaps; cleanup removes leftover staging.
+            cleanup_staging_tables(conn)
+        except sqlite3.Error as exc:
+            print(
+                f"\nWarning: staging cleanup could not complete: {exc}"
+            )
+
+        conn.close()
 
 
-# ============================================================
-# 8. TASK 13 SUMMARY
-# ============================================================
-
-print("\n" + "=" * 100)
-print("TASK 13 - SQL OPTIMIZATION COMPLETED")
-print("=" * 100)
-
-print(f"""
-Q1 - Top 3 products per category per month: {q1_result.height} rows
-Q2 - Top 10 products by revenue:            {q2_result.height} rows
-Q3 - Month-over-month revenue:              {q3_result.height} rows
-Q4 - Customers without recent orders:       {q4_result.height} rows
-Q5 - Date-filtered revenue:                 {q5_result.height} rows
-
-Output folder:
-{OUTPUT_FOLDER}
-
-SQL concepts demonstrated:
-- INNER JOIN
-- CTEs
-- SUM and GROUP BY
-- ROW_NUMBER and LAG window functions
-- NOT EXISTS
-- Date-range filtering
-- EXPLAIN query plan
-""")
-
-print("=" * 100)
-print("ALL SQL QUERIES COMPLETED")
-print("=" * 100)
-
-con.close()
+if __name__ == "__main__":
+    main()

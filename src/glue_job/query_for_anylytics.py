@@ -6,38 +6,15 @@ if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
 if sys.stderr.encoding and sys.stderr.encoding.lower() != "utf-8":
     sys.stderr.reconfigure(encoding="utf-8")
 
-from pathlib import Path
-from datetime import date, timedelta
+from datetime import timedelta
 
 import polars as pl
-from pyiceberg.catalog import load_catalog
 
-
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-
-WAREHOUSE_FOLDER = PROJECT_ROOT / "Warehouse"
-
-CATALOG_DB = WAREHOUSE_FOLDER / "dimensional_model_catalog.db"
-
-DIMENSIONAL_WAREHOUSE_FOLDER = (
-    WAREHOUSE_FOLDER / "dimensional_model"
-)
-
-WAREHOUSE_URI = DIMENSIONAL_WAREHOUSE_FOLDER.resolve().as_uri()
-
-NAMESPACE = "star_schema"
-
-
-
-
-catalog = load_catalog(
-    "dimensional_model",
-    type="sql",
-    uri=f"sqlite:///{CATALOG_DB}",
-    warehouse=WAREHOUSE_URI,
-    **{
-        "py-io-impl": "pyiceberg.io.fsspec.FsspecFileIO"
-    },
+# Shared project and Iceberg configuration
+from config import (
+    PROJECT_ROOT,
+    NAMESPACE,
+    catalog,
 )
 
 

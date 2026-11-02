@@ -1,15 +1,27 @@
-
 from __future__ import annotations
 
 import argparse
 import logging
-import os
 from pathlib import Path
 from typing import Optional
 
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as F
 from pyspark.sql.functions import broadcast
+
+from config import (
+    TASK14_APP_NAME,
+    TASK14_OUTPUT_FOLDER,
+    TASK14_BROADCAST_PRODUCT_MAX_MB,
+    TASK14_SHUFFLE_PARTITIONS,
+    TASK14_CACHE_FILTERED_ORDERS,
+    TASK14_OUTPUT_PARTITIONS,
+    TASK14_SPARK_ADAPTIVE_ENABLED,
+    TASK14_SPARK_ADAPTIVE_COALESCE_ENABLED,
+    TASK14_SPARK_ADAPTIVE_SKEW_JOIN_ENABLED,
+    TASK14_SPARK_PARQUET_FILTER_PUSHDOWN,
+    TASK14_SPARK_PARQUET_VECTORIZED_READER,
+)
 
 
 logging.basicConfig(
@@ -35,30 +47,31 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--customers", required=True, help="Customers CSV/Parquet file or directory")
     parser.add_argument("--products", required=True, help="Products CSV/Parquet file or directory")
     parser.add_argument("--format", choices=("parquet", "csv"), default="parquet")
-    parser.add_argument("--output", default="task14_results")
+    parser.add_argument("--output", default=str(TASK14_OUTPUT_FOLDER))
     parser.add_argument("--start-date", default=None, help="Inclusive order date, e.g. 2026-01-01")
     parser.add_argument("--end-date", default=None, help="Exclusive order date, e.g. 2026-04-01")
     parser.add_argument(
         "--broadcast-product-max-mb",
         type=int,
-        default=100,
+        default=TASK14_BROADCAST_PRODUCT_MAX_MB,
         help="Broadcast product only if estimated serialized size is below this threshold; set 0 to disable.",
     )
     parser.add_argument(
         "--shuffle-partitions",
         type=int,
-        default=max(200, int(os.cpu_count() or 4) * 2),
+        default=TASK14_SHUFFLE_PARTITIONS,
         help="Initial shuffle partition count; tune for the cluster and data volume.",
     )
     parser.add_argument(
         "--cache-filtered-orders",
         action="store_true",
+        default=TASK14_CACHE_FILTERED_ORDERS,
         help="Cache filtered orders only if it is reused and memory/storage capacity is sufficient.",
     )
     parser.add_argument(
         "--output-partitions",
         type=int,
-        default=200,
+        default=TASK14_OUTPUT_PARTITIONS,
         help="Number of output partitions before writing; tune based on output size.",
     )
     return parser.parse_args()
@@ -68,12 +81,24 @@ def create_spark(app_name: str, shuffle_partitions: int) -> SparkSession:
     return (
         SparkSession.builder.appName(app_name)
         # AQE can coalesce small shuffle partitions and optimize some join strategies at runtime.
-        .config("spark.sql.adaptive.enabled", "true")
-        .config("spark.sql.adaptive.coalescePartitions.enabled", "true")
-        .config("spark.sql.adaptive.skewJoin.enabled", "true")
+        .config("spark.sql.adaptive.enabled", str(TASK14_SPARK_ADAPTIVE_ENABLED).lower())
+        .config(
+            "spark.sql.adaptive.coalescePartitions.enabled",
+            str(TASK14_SPARK_ADAPTIVE_COALESCE_ENABLED).lower(),
+        )
+        .config(
+            "spark.sql.adaptive.skewJoin.enabled",
+            str(TASK14_SPARK_ADAPTIVE_SKEW_JOIN_ENABLED).lower(),
+        )
         .config("spark.sql.shuffle.partitions", str(shuffle_partitions))
-        .config("spark.sql.parquet.filterPushdown", "true")
-        .config("spark.sql.parquet.enableVectorizedReader", "true")
+        .config(
+            "spark.sql.parquet.filterPushdown",
+            str(TASK14_SPARK_PARQUET_FILTER_PUSHDOWN).lower(),
+        )
+        .config(
+            "spark.sql.parquet.enableVectorizedReader",
+            str(TASK14_SPARK_PARQUET_VECTORIZED_READER).lower(),
+        )
         .getOrCreate()
     )
 
@@ -146,12 +171,12 @@ def maybe_broadcast_products(
     products: DataFrame,
     max_mb: int,
 ) -> tuple[DataFrame, bool]:
-    
+
     if max_mb <= 0:
         return products, False
 
     # Spark's autoBroadcastJoinThreshold and AQE can make a better choice when
-    
+
     try:
         estimated_bytes = products._jdf.queryExecution().optimizedPlan().stats().sizeInBytes()
         estimated_mb = int(estimated_bytes) / (1024 * 1024)
@@ -169,7 +194,7 @@ def maybe_broadcast_products(
 
 def main() -> None:
     args = parse_args()
-    spark = create_spark("Task14-PySpark-Optimization", args.shuffle_partitions)
+    spark = create_spark(TASK14_APP_NAME, args.shuffle_partitions)
     spark.sparkContext.setLogLevel("WARN")
 
     try:
@@ -180,17 +205,14 @@ def main() -> None:
         orders = apply_order_filters(orders, args.start_date, args.end_date)
 
         if args.cache_filtered_orders:
-         
             orders = orders.persist()
             LOG.info("Filtered orders persisted because --cache-filtered-orders was specified.")
-
 
         product_join_side, product_is_broadcast = maybe_broadcast_products(
             products, args.broadcast_product_max_mb
         )
         LOG.info("Broadcast product dimension: %s", product_is_broadcast)
 
-        
         joined = (
             orders.join(customers, on="customer_id", how="inner")
             .join(product_join_side, on="product_id", how="inner")

@@ -1,10 +1,8 @@
-from pathlib import Path
-from datetime import date, timedelta
+from datetime import timedelta
 
 import polars as pl
 import pyarrow as pa
 
-from pyiceberg.catalog import load_catalog
 from pyiceberg.schema import Schema
 from pyiceberg.types import (
     BooleanType,
@@ -20,65 +18,17 @@ from pyiceberg.types import (
 
 
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-
-CURATED_FOLDER = PROJECT_ROOT / "curated"
-
-WAREHOUSE_FOLDER = PROJECT_ROOT / "Warehouse"
-
-WAREHOUSE_FOLDER.mkdir(
-    parents=True,
-    exist_ok=True,
-)
-
-
-
-CATALOG_DB = (
-    WAREHOUSE_FOLDER
-    / "dimensional_model_catalog.db"
-)
-
-DIMENSIONAL_WAREHOUSE_FOLDER = (
-    WAREHOUSE_FOLDER
-    / "dimensional_model"
-)
-
-DIMENSIONAL_WAREHOUSE_FOLDER.mkdir(
-    parents=True,
-    exist_ok=True,
-)
-
-WAREHOUSE_URI = (
-    DIMENSIONAL_WAREHOUSE_FOLDER
-    .resolve()
-    .as_uri()
-)
-
-NAMESPACE = "star_schema"
-
-
-# =============================================================================
-# SCD2 DATES
-# =============================================================================
-
-RUN_DATE = date.today()
-
-MAX_DATE = date(9999, 12, 31)
-
-
-# =============================================================================
-# ICEBERG CATALOG
-# =============================================================================
-
-catalog = load_catalog(
-    "dimensional_model",
-    type="sql",
-    uri=f"sqlite:///{CATALOG_DB}",
-    warehouse=WAREHOUSE_URI,
-    **{
-        "py-io-impl":
-        "pyiceberg.io.fsspec.FsspecFileIO"
-    },
+from config import (
+    PROJECT_ROOT,
+    CURATED_FOLDER,
+    WAREHOUSE_FOLDER,
+    CATALOG_DB,
+    DIMENSIONAL_WAREHOUSE_FOLDER,
+    WAREHOUSE_URI,
+    NAMESPACE,
+    RUN_DATE,
+    MAX_DATE,
+    catalog,
 )
 
 

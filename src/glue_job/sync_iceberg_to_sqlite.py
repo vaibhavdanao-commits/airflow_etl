@@ -1,4 +1,3 @@
-
 # ============================================================
 # sync_iceberg_to_sqlite.py
 # Full refresh: Apache Iceberg -> SQLite
@@ -12,13 +11,23 @@ import sqlite3
 import sys
 from datetime import date, datetime
 from decimal import Decimal
-from pathlib import Path
 from typing import Any
 
 import numpy as np
 import pandas as pd
 
-from pyiceberg.catalog import load_catalog
+from config import (
+    PROJECT_ROOT,
+    WAREHOUSE_FOLDER,
+    SYNC_ICEBERG_CATALOG_DB,
+    SYNC_ICEBERG_WAREHOUSE,
+    SYNC_SQLITE_DB,
+    SYNC_CATALOG_NAME,
+    SYNC_NAMESPACE,
+    SYNC_TABLES_TO_IMPORT,
+    SYNC_STAGING_PREFIX,
+    sync_iceberg_catalog,
+)
 
 
 # ============================================================
@@ -33,47 +42,21 @@ except (AttributeError, OSError):
 
 
 # ============================================================
-# 2. PROJECT PATHS
-# Script location:
-# D:\airflow_etl\src\glue_job\sync_iceberg_to_sqlite.py
+# 2. SHARED PROJECT CONFIGURATION
+# Paths and Iceberg settings are maintained in config.py.
 # ============================================================
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-
-WAREHOUSE_FOLDER = PROJECT_ROOT / "Warehouse"
-
-ICEBERG_CATALOG_DB = WAREHOUSE_FOLDER / "pyiceberg_catalog.db"
-ICEBERG_WAREHOUSE = WAREHOUSE_FOLDER
-
-SQLITE_DB = WAREHOUSE_FOLDER / "retail_analytics.db"
+ICEBERG_CATALOG_DB = SYNC_ICEBERG_CATALOG_DB
+ICEBERG_WAREHOUSE = SYNC_ICEBERG_WAREHOUSE
+SQLITE_DB = SYNC_SQLITE_DB
+CATALOG_NAME = SYNC_CATALOG_NAME
+NAMESPACE = SYNC_NAMESPACE
+TABLES_TO_IMPORT = SYNC_TABLES_TO_IMPORT
+STAGING_PREFIX = SYNC_STAGING_PREFIX
 
 
 # ============================================================
-# 3. ICEBERG CONFIGURATION
-# Matches your reference script
-# ============================================================
-
-CATALOG_NAME = "local"
-NAMESPACE = "default"
-
-TABLES_TO_IMPORT = [
-    "customers",
-    "products",
-    "orders",
-    "orders_enriched",
-    "order_summary",
-]
-
-
-# ============================================================
-# 4. GENERAL CONFIGURATION
-# ============================================================
-
-STAGING_PREFIX = "_staging_"
-
-
-# ============================================================
-# 5. PRINT CONFIGURATION
+# 3. PRINT CONFIGURATION
 # ============================================================
 
 def print_configuration() -> None:
@@ -96,7 +79,7 @@ def print_configuration() -> None:
 
 
 # ============================================================
-# 6. VALIDATE PATHS
+# 4. VALIDATE PATHS
 # ============================================================
 
 def validate_paths() -> None:
@@ -111,7 +94,7 @@ def validate_paths() -> None:
             f"{ICEBERG_CATALOG_DB}\n\n"
             "Check the catalog database path used in your reference "
             "script. This script expects:\n"
-            r"D:\airflow_etl\Warehouse\pyiceberg_catalog.db"
+            r"D:\\airflow_etl\\Warehouse\\pyiceberg_catalog.db"
         )
 
     WAREHOUSE_FOLDER.mkdir(parents=True, exist_ok=True)
@@ -120,28 +103,17 @@ def validate_paths() -> None:
 
 
 # ============================================================
-# 7. CONNECT TO EXISTING ICEBERG CATALOG
+# 5. CONNECT TO EXISTING ICEBERG CATALOG
 # ============================================================
 
 def connect_iceberg_catalog():
     print("\nConnecting to the existing Iceberg catalog...")
-
-    catalog = load_catalog(
-        CATALOG_NAME,
-        type="sql",
-        uri=f"sqlite:///{ICEBERG_CATALOG_DB}",
-        warehouse=ICEBERG_WAREHOUSE.resolve().as_uri(),
-        **{
-            "py-io-impl": "pyiceberg.io.fsspec.FsspecFileIO"
-        },
-    )
-
     print("Iceberg catalog connection successful.")
-    return catalog
+    return sync_iceberg_catalog
 
 
 # ============================================================
-# 8. CONVERT VALUES TO SQLITE-FRIENDLY VALUES
+# 6. CONVERT VALUES TO SQLITE-FRIENDLY VALUES
 # ============================================================
 
 def normalize_value(value: Any) -> Any:
@@ -218,7 +190,7 @@ def normalize_dataframe(df: pd.DataFrame) -> pd.DataFrame:
 
 
 # ============================================================
-# 9. LOAD ONE ICEBERG TABLE INTO PANDAS
+# 7. LOAD ONE ICEBERG TABLE INTO PANDAS
 # ============================================================
 
 def read_iceberg_table(catalog, table_name: str) -> pd.DataFrame:
@@ -241,7 +213,7 @@ def read_iceberg_table(catalog, table_name: str) -> pd.DataFrame:
 
 
 # ============================================================
-# 10. OPEN SQLITE CONNECTION
+# 8. OPEN SQLITE CONNECTION
 # ============================================================
 
 def connect_sqlite() -> sqlite3.Connection:
@@ -260,7 +232,7 @@ def connect_sqlite() -> sqlite3.Connection:
 
 
 # ============================================================
-# 11. CREATE STAGING TABLES
+# 9. CREATE STAGING TABLES
 # Existing production tables remain untouched at this stage.
 # ============================================================
 
@@ -308,7 +280,7 @@ def write_staging_table(
 
 
 # ============================================================
-# 12. ATOMICALLY REPLACE TARGET TABLES
+# 10. ATOMICALLY REPLACE TARGET TABLES
 # All target-table swaps happen inside one SQLite transaction.
 # ============================================================
 
@@ -348,7 +320,7 @@ def replace_target_tables(
 
 
 # ============================================================
-# 13. CLEAN UP LEFTOVER STAGING TABLES
+# 11. CLEAN UP LEFTOVER STAGING TABLES
 # ============================================================
 
 def cleanup_staging_tables(
@@ -365,7 +337,7 @@ def cleanup_staging_tables(
 
 
 # ============================================================
-# 14. VERIFY FINAL SQLITE TABLES
+# 12. VERIFY FINAL SQLITE TABLES
 # ============================================================
 
 def verify_sqlite_tables(
@@ -413,7 +385,7 @@ def verify_sqlite_tables(
 
 
 # ============================================================
-# 15. MAIN EXECUTION
+# 13. MAIN EXECUTION
 # ============================================================
 
 def main() -> None:

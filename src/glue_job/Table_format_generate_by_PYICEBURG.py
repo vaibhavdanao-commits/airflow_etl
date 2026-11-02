@@ -5,12 +5,10 @@ if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
 
 if sys.stderr.encoding and sys.stderr.encoding.lower() != "utf-8":
     sys.stderr.reconfigure(encoding="utf-8")
-from pathlib import Path
 import json
 
 import polars as pl
 
-from pyiceberg.catalog import load_catalog
 from pyiceberg.schema import Schema
 from pyiceberg.types import (
     BooleanType,
@@ -26,66 +24,30 @@ from pyiceberg.types import (
 
 
 # ============================================================
-# PROJECT PATH
+# SHARED PROJECT AND ICEBERG CONFIGURATION
+# Paths and catalog settings are maintained in config.py.
 # ============================================================
 
-PROJECT_ROOT = (
-    Path(__file__)
-    .resolve()
-    .parent
-    .parent
-    .parent
+from config import (
+    PROJECT_ROOT,
+    CURATED_FOLDER,
+    WAREHOUSE_FOLDER,
+    INCREMENTAL_PROCESSED_FILES_METADATA,
+    INCREMENTAL_CATALOG_DB,
+    INCREMENTAL_WAREHOUSE_URI,
+    INCREMENTAL_CATALOG_NAME,
+    INCREMENTAL_NAMESPACE,
+    incremental_catalog as catalog,
 )
 
-
-# ============================================================
-# SOURCE AND TARGET
-# ============================================================
-
-CURATED_FOLDER = (
-    PROJECT_ROOT / "curated"
-)
-
-WAREHOUSE_FOLDER = (
-    PROJECT_ROOT / "Warehouse"
-)
-
-WAREHOUSE_FOLDER.mkdir(
-    parents=True,
-    exist_ok=True
-)
+PROCESSED_FILES_METADATA = INCREMENTAL_PROCESSED_FILES_METADATA
+CATALOG_DB = INCREMENTAL_CATALOG_DB
+WAREHOUSE_URI = INCREMENTAL_WAREHOUSE_URI
+NAMESPACE = INCREMENTAL_NAMESPACE
 
 
 # ============================================================
-# INCREMENTAL PROCESSING METADATA
-# ============================================================
-
-PROCESSED_FILES_METADATA = (
-    WAREHOUSE_FOLDER /
-    "iceberg_processed_files.json"
-)
-
-
-# ============================================================
-# ICEBERG CATALOG
-# ============================================================
-
-CATALOG_DB = (
-    WAREHOUSE_FOLDER /
-    "pyiceberg_catalog.db"
-)
-
-WAREHOUSE_URI = (
-    WAREHOUSE_FOLDER
-    .resolve()
-    .as_uri()
-)
-
-NAMESPACE = "default"
-
-
-# ============================================================
-# INITIALIZE APACHE ICEBERG CATALOG
+# INITIALIZE APACHE ICEBERG
 # ============================================================
 
 print()
@@ -103,18 +65,6 @@ print(
 
 print(
     f"Metadata  : {PROCESSED_FILES_METADATA}"
-)
-
-
-catalog = load_catalog(
-    "local",
-    type="sql",
-    uri=f"sqlite:///{CATALOG_DB}",
-    warehouse=WAREHOUSE_URI,
-    **{
-        "py-io-impl":
-        "pyiceberg.io.fsspec.FsspecFileIO"
-    }
 )
 
 
