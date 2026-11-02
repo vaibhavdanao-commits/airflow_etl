@@ -303,6 +303,14 @@ have different names or may not yet exist in your checkout.
 
     airflow_etl/
     ├── dashboard/
+    │   ├── ChromaDB
+    │   ├── app.py
+    │   ├── check_catelog.py
+    │   ├── iceberg_reader.py
+    │   ├── iceberg_schema_inspector.py
+    │   ├── query_engine.py
+    │   ├── rag_engine.py
+    │   └── visualizations.py
     ├── raw/
     ├── processed/
     ├── quarantine/
@@ -322,7 +330,7 @@ have different names or may not yet exist in your checkout.
     ├── dags/
     │   ├── airflow_etl_dag.py
     │   ├── file_watcher.py
-    │   ├── local_etl_dag.py
+    │   └──local_etl_dag.py
     ├── monitoring_dashboard/
     ├── ai_iceberg_dashboard/
     ├── logs/
@@ -333,8 +341,7 @@ have different names or may not yet exist in your checkout.
     ├── .gitignore
     └── README.txt
 
-Keep the README aligned with the actual folder names and entry points in
-the repository.
+
 
 7. Configuration
 
@@ -425,11 +432,7 @@ Data flow
 5.  Write validated outputs to the appropriate downstream layer.
 6.  Load or refresh the required warehouse tables.
 7.  Run analytical queries against the curated or warehouse layer.
-
-Field names can vary between source files and curated tables. Confirm
-the schemas before executing transformations.
-
-9. Running the Data Pipeline
+8. Running the Data Pipeline
 
 Run the pipeline entry point
 
@@ -437,14 +440,11 @@ From the project root:
 
     cd D:\airflow_etl
     .\.venv\Scripts\Activate.ps1
-    python run_pipeline.py
+    python run.py
 
-Use this command if run_pipeline.py is the configured entry point in
+Use this command if run.py is the configured entry point in
 your checkout.
 
-If your pipeline uses a different script, run that script instead. The
-command above should not be assumed to execute every optional module
-automatically.
 
 Recommended execution sequence
 
@@ -789,9 +789,9 @@ diagnostic details where possible.
 
 Launch the monitoring dashboard
 
-If the monitoring application is implemented as dashboard/app.py, run:
+If the monitoring application is implemented as monitoring_dashboard/app.py, run:
 
-    cd D:\airflow_etl\dashboard
+    cd D:\airflow_etl\monitoring_dashboard
     streamlit run app.py
 
 Otherwise, use the actual monitoring dashboard entry point.
@@ -991,12 +991,7 @@ Activate the virtual environment and navigate to the project root:
     cd D:\airflow_etl
     .\.venv\Scripts\Activate.ps1
 
-Run the project’s unittest suite:
 
-    python -m unittest discover -s tests -v
-
-This command assumes that the project tests use Python’s unittest
-discovery conventions.
 
 Recommended testing coverage
 

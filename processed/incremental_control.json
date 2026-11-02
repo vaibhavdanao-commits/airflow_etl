@@ -4569,9 +4569,9 @@
             }
         },
         "orders": {
-            "last_processed_time": "2026-10-28T17:42:49.437459",
-            "last_run_time": "2026-10-28T17:43:39.672196",
-            "records_processed": 150000,
+            "last_processed_time": "2026-10-28T17:42:46.905799",
+            "last_run_time": "2026-11-02T11:58:23.992134",
+            "records_processed": 243,
             "processed_files": {
                 "2025-01-01/orders.csv": {
                     "modified_time": "2026-10-28T17:42:46.905799",
@@ -8214,6 +8214,12 @@
                     "modified_time_ns": 1793189569437458900,
                     "size": 21618,
                     "processed_at": "2026-10-28T17:43:39.672179"
+                },
+                "2025-01-01 - Copy/orders.csv": {
+                    "modified_time": "2026-10-28T17:42:46.905799",
+                    "modified_time_ns": 1793189566905799300,
+                    "size": 20709,
+                    "processed_at": "2026-11-02T11:58:23.992014"
                 }
             }
         },
