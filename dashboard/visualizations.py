@@ -1,8 +1,7 @@
 
 from __future__ import annotations
 
-import re
-from typing import Optional
+from typing import Any
 
 import pandas as pd
 import plotly.express as px
@@ -10,679 +9,738 @@ import streamlit as st
 
 
 # ============================================================
-# CONFIGURATION
+# THEME
 # ============================================================
 
-MAX_BAR_CATEGORIES = 20
-MAX_PIE_CATEGORIES = 8
-MAX_SCATTER_POINTS = 3000
+CHART_COLORS = [
+    "#635BDB",
+    "#14B8A6",
+    "#F59E0B",
+    "#3B82F6",
+    "#EC4899",
+    "#8B5CF6",
+    "#10B981",
+    "#F97316",
+    "#64748B",
+    "#06B6D4",
+]
 
-TIME_WORDS = (
-    "date", "month", "year", "day", "timestamp",
-    "order_date", "sale_date", "created_at", "period",
-)
+BAR_COLOR = "#635BDB"
+LINE_COLOR = "#14B8A6"
 
-ID_WORDS = (
-    "id", "_id", "key", "code", "zip", "postal_code",
-)
+CHART_HEIGHT = 340
 
-MEASURE_PRIORITY = (
-    "total_sales",
-    "sales_amount",
-    "total_revenue",
-    "revenue",
-    "sales",
-    "total_amount",
-    "amount",
-    "sales_value",
-    "total_quantity",
-    "quantity",
-    "order_count",
-    "customer_count",
-    "product_count",
-    "count",
-)
-
-CHART_ALIASES = {
-    "donut": "donut",
-    "doughnut": "donut",
-    "pie": "pie",
-    "bar": "bar",
-    "line": "line",
-    "area": "area",
-    "scatter": "scatter",
-    "histogram": "histogram",
-    "box": "box",
-    "auto": "auto",
-    "kpi": "kpi",
-}
+CHART_TYPES = [
+    "Bar",
+    "Line",
+    "Donut",
+    "Pie",
+]
 
 
 # ============================================================
-# COLUMN DETECTION
+# CHART SLOT MANAGEMENT
 # ============================================================
 
-def _normalise_name(name: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "_", str(name).lower()).strip("_")
+def create_chart_slots(
+    titles: list[str],
+) -> list[Any]:
+
+    slots = []
+
+    for start in range(0, len(titles), 2):
+
+        columns = st.columns(2, gap="large")
+
+        for offset, column in enumerate(columns):
+
+            index = start + offset
+
+            if index >= len(titles):
+                break
+
+            with column:
+
+                slot = st.empty()
+                slots.append(slot)
+
+                show_chart_loading(
+                    slot,
+                    titles[index],
+                )
+
+    return slots
 
 
-def _numeric_columns(df: pd.DataFrame) -> list[str]:
-    return df.select_dtypes(include="number").columns.tolist()
+def show_chart_loading(
+    slot: Any,
+    title: str,
+) -> None:
 
+    with slot.container(border=True):
 
-def _is_identifier(column: str) -> bool:
-    """Detect identifier-like columns that should not be summed."""
-    name = _normalise_name(column)
+        st.markdown(f"**{title}**")
 
-    if name in {"id", "order_id", "customer_id", "product_id",
-                "store_id", "transaction_id"}:
-        return True
-
-    return any(
-        name.endswith(word) or name == word.lstrip("_")
-        for word in ID_WORDS
-    )
-
-
-def _is_time_column(column: str, series: pd.Series) -> bool:
-    name = _normalise_name(column)
-
-    if pd.api.types.is_datetime64_any_dtype(series):
-        return True
-
-    if any(word in name for word in TIME_WORDS):
-        return True
-
-    if (
-        pd.api.types.is_object_dtype(series)
-        or pd.api.types.is_string_dtype(series)
-    ):
-        sample = series.dropna().astype(str).head(30)
-
-        if sample.empty:
-            return False
-
-        pattern = re.compile(
-            r"^\d{4}[-/]\d{1,2}([-/]\d{1,2})?"
-            r"|^[A-Za-z]{3,9}\s+\d{4}$"
+        st.markdown(
+            """
+            <div style="
+                height:230px;
+                display:flex;
+                flex-direction:column;
+                align-items:center;
+                justify-content:center;
+                background:#F7F8FC;
+                border:1px dashed #D8DEEA;
+                border-radius:12px;
+            ">
+                <div style="font-size:28px;">⏳</div>
+                <div style="
+                    color:#53617A;
+                    font-size:14px;
+                    font-weight:600;
+                ">
+                    Generating visualization
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
 
-        matches = sample.map(
-            lambda value: bool(pattern.search(value.strip()))
+
+def show_chart_error(
+    slot: Any,
+    title: str,
+    error: str,
+) -> None:
+
+    slot.empty()
+
+    with slot.container(border=True):
+
+        st.markdown(f"**{title}**")
+
+        st.warning(
+            "This visualization could not be generated."
         )
 
-        return matches.mean() >= 0.7
-
-    return False
-
-
-def _parse_time_columns(df: pd.DataFrame) -> pd.DataFrame:
-    """Convert date-like string columns into datetime where appropriate."""
-    result = df.copy()
-
-    for column in result.columns:
-        if not _is_time_column(column, result[column]):
-            continue
-
-        if pd.api.types.is_datetime64_any_dtype(result[column]):
-            continue
-
-        try:
-            parsed = pd.to_datetime(result[column], errors="coerce")
-
-            if parsed.notna().mean() >= 0.7:
-                result[column] = parsed
-        except (ValueError, TypeError):
-            continue
-
-    return result
-
-
-def _time_columns(df: pd.DataFrame) -> list[str]:
-    return [
-        column
-        for column in df.columns
-        if _is_time_column(column, df[column])
-    ]
-
-
-def _category_columns(df: pd.DataFrame) -> list[str]:
-    numeric = set(_numeric_columns(df))
-
-    return [
-        column
-        for column in df.columns
-        if column not in numeric
-        and not _is_time_column(column, df[column])
-        and df[column].nunique(dropna=True) > 1
-    ]
-
-
-def _get_measures(df: pd.DataFrame) -> list[str]:
-    """Rank numeric columns, excluding identifiers."""
-    candidates = [
-        column
-        for column in _numeric_columns(df)
-        if not _is_identifier(column)
-    ]
-
-    priority = {
-        name: index
-        for index, name in enumerate(MEASURE_PRIORITY)
-    }
-
-    return sorted(
-        candidates,
-        key=lambda column: (
-            priority.get(_normalise_name(column), 999),
-            _normalise_name(column),
-        ),
-    )
-
-
-def _get_dimension(
-    df: pd.DataFrame,
-    exclude: Optional[list[str]] = None,
-) -> Optional[str]:
-    exclude = exclude or []
-
-    # Prefer date/time dimensions for chronological results.
-    for column in _time_columns(df):
-        if column not in exclude and df[column].nunique(dropna=True) > 1:
-            return column
-
-    # Then use categorical dimensions.
-    for column in _category_columns(df):
-        if column not in exclude:
-            return column
-
-    return None
-
-
-def _display_name(name: str) -> str:
-    return str(name).replace("_", " ").strip().title()
+        with st.expander("View error details"):
+            st.code(str(error))
 
 
 # ============================================================
 # DATA PREPARATION
 # ============================================================
 
-def _clean_data(df: pd.DataFrame) -> pd.DataFrame:
-    data = df.copy()
-    data.columns = [str(column) for column in data.columns]
+def _normalise_chart_type(
+    chart_type: str,
+) -> str:
 
-    # Make duplicate column names unique.
-    counts: dict[str, int] = {}
-    unique_columns = []
+    value = str(
+        chart_type or "Bar"
+    ).strip().lower()
 
-    for column in data.columns:
-        counts[column] = counts.get(column, 0) + 1
-        unique_columns.append(
-            column if counts[column] == 1
-            else f"{column}_{counts[column]}"
-        )
+    supported = {
+        "bar": "Bar",
+        "column": "Bar",
+        "line": "Line",
+        "pie": "Pie",
+        "donut": "Donut",
+    }
 
-    data.columns = unique_columns
-
-    # Convert numeric-looking object columns when conversion is safe.
-    for column in data.columns:
-        if (
-            pd.api.types.is_object_dtype(data[column])
-            and not _is_time_column(column, data[column])
-        ):
-            converted = pd.to_numeric(data[column], errors="coerce")
-
-            if len(data) and converted.notna().mean() >= 0.9:
-                data[column] = converted
-
-    return _parse_time_columns(data)
+    return supported.get(value, "Bar")
 
 
-def _aggregate(
+def _prepare_chart_data(
     df: pd.DataFrame,
     dimension: str,
     measure: str,
-    aggregation: str = "sum",
+    chart_type: str = "Bar",
+    top_n: int = 10,
 ) -> pd.DataFrame:
-    data = df[[dimension, measure]].copy()
 
-    data[measure] = pd.to_numeric(data[measure], errors="coerce")
-    data = data.dropna(subset=[dimension, measure])
+    if df is None or df.empty:
+        return pd.DataFrame()
 
-    if data.empty:
-        return data
+    if dimension not in df.columns:
+        return pd.DataFrame()
 
-    if aggregation == "mean":
-        grouped = data.groupby(
-            dimension, as_index=False, dropna=False
-        )[measure].mean()
-    elif aggregation == "count":
-        grouped = data.groupby(
-            dimension, as_index=False, dropna=False
-        )[measure].count()
-    else:
-        grouped = data.groupby(
-            dimension, as_index=False, dropna=False
-        )[measure].sum()
+    if measure not in df.columns:
+        return pd.DataFrame()
 
-    if pd.api.types.is_datetime64_any_dtype(grouped[dimension]):
-        return grouped.sort_values(dimension)
+    working = df[
+        [dimension, measure]
+    ].copy()
 
-    return grouped.sort_values(measure, ascending=False)
-
-
-def _is_time_series(df: pd.DataFrame, dimension: str) -> bool:
-    return _is_time_column(dimension, df[dimension])
-
-
-def _question_requests_share(question: str) -> bool:
-    q = question.lower()
-
-    return any(word in q for word in (
-        "share", "distribution", "percentage", "proportion",
-        "breakdown", "contribution", "split",
-    ))
-
-
-def _question_requests_trend(question: str) -> bool:
-    q = question.lower()
-
-    return any(word in q for word in (
-        "trend", "over time", "monthly", "month-wise",
-        "month wise", "daily", "weekly", "yearly",
-        "each month", "every month", "per month",
-        "by month", "by year", "by day", "growth",
-        "historical",
-    ))
-
-
-def _question_requests_comparison(question: str) -> bool:
-    q = question.lower()
-
-    return any(word in q for word in (
-        "compare", "comparison", "highest", "lowest",
-        "top ", "ranking", "rank", "by city", "by product",
-        "by category", "by store", "by payment",
-        "versus", " vs ",
-    ))
-
-
-def _choose_chart_type(
-    df: pd.DataFrame,
-    question: str,
-    dimension: Optional[str],
-    measure: Optional[str],
-    suggested_type: str = "auto",
-) -> str:
-    """
-    Choose the chart most suitable for the query result.
-    """
-    requested = CHART_ALIASES.get(
-        str(suggested_type).lower().strip(), "auto"
+    working[measure] = pd.to_numeric(
+        working[measure],
+        errors="coerce",
     )
 
-    if requested != "auto":
-        return requested
+    working = working.dropna(
+        subset=[dimension, measure]
+    )
 
-    if measure is None:
-        return "kpi"
+    if working.empty:
+        return pd.DataFrame()
 
-    if dimension is None:
-        return "kpi"
+    grouped = (
+        working.groupby(
+            dimension,
+            dropna=False,
+        )[measure]
+        .sum()
+        .reset_index()
+    )
 
-    q = question.lower()
+    if grouped.empty:
+        return grouped
 
-    # Time-based analysis should show chronology, not category share.
-    if _is_time_series(df, dimension):
-        if any(word in q for word in ("area chart", "cumulative", "volume")):
-            return "area"
-        return "line"
+    chart_type = _normalise_chart_type(
+        chart_type
+    )
 
-    # Explicit requests take priority.
-    if any(word in q for word in ("donut", "doughnut")):
-        return "donut"
+    # Chronological sorting for line charts.
+    if chart_type == "Line":
 
-    if "pie chart" in q:
-        return "pie"
+        try:
 
-    if "bar chart" in q or "bar graph" in q:
-        return "bar"
+            dates = pd.to_datetime(
+                grouped[dimension],
+                errors="coerce",
+            )
 
-    if "scatter" in q or "correlation" in q or "relationship between" in q:
-        if len(_get_measures(df)) >= 2:
-            return "scatter"
+            if dates.notna().all():
 
-    if "histogram" in q or "frequency distribution" in q:
-        return "histogram"
+                grouped = (
+                    grouped.assign(
+                        _sort_value=dates
+                    )
+                    .sort_values("_sort_value")
+                    .drop(columns="_sort_value")
+                )
 
-    if "box plot" in q:
-        return "box"
+            else:
 
-    # A share chart is useful only when category cardinality is small.
-    category_count = df[dimension].nunique(dropna=True)
+                grouped = grouped.sort_values(
+                    dimension
+                )
 
-    if _question_requests_share(question) and category_count <= MAX_PIE_CATEGORIES:
-        return "donut"
+        except (TypeError, ValueError):
 
-    # Trend words without a time field fall back to a comparison chart.
-    if _question_requests_trend(question):
-        return "bar"
+            grouped = grouped.sort_values(
+                dimension
+            )
 
-    # Default for category comparisons.
-    return "bar"
-
-
-# ============================================================
-# CHART BUILDERS
-# ============================================================
-
-def _make_chart(
-    df: pd.DataFrame,
-    chart_type: str,
-    dimension: Optional[str],
-    measure: Optional[str],
-    question: str,
-):
-    if chart_type == "kpi" or measure is None:
-        return None
-
-    # Histogram needs one numeric column; no dimension is required.
-    if chart_type == "histogram":
-        numeric = _get_measures(df)
-
-        if not numeric:
-            return None
-
-        return px.histogram(
-            df,
-            x=numeric[0],
-            title=f"Distribution of {_display_name(numeric[0])}",
-            labels={numeric[0]: _display_name(numeric[0])},
-        )
-
-    if dimension is None or dimension not in df.columns:
-        return None
-
-    # Scatter compares two numeric measures.
-    if chart_type == "scatter":
-        measures = _get_measures(df)
-
-        if len(measures) < 2:
-            return None
-
-        x_measure = measures[0]
-        y_measure = measures[1]
-
-        data = df[[x_measure, y_measure]].copy()
-        data[x_measure] = pd.to_numeric(data[x_measure], errors="coerce")
-        data[y_measure] = pd.to_numeric(data[y_measure], errors="coerce")
-        data = data.dropna()
-
-        if len(data) > MAX_SCATTER_POINTS:
-            data = data.sample(MAX_SCATTER_POINTS, random_state=42)
-
-        if data.empty:
-            return None
-
-        return px.scatter(
-            data,
-            x=x_measure,
-            y=y_measure,
-            title=(
-                f"{_display_name(y_measure)} vs "
-                f"{_display_name(x_measure)}"
-            ),
-            labels={
-                x_measure: _display_name(x_measure),
-                y_measure: _display_name(y_measure),
-            },
-        )
-
-    data = _aggregate(df, dimension, measure)
-
-    if data.empty:
-        return None
-
-    is_time = _is_time_series(data, dimension)
-
-    if is_time:
-        data = data.sort_values(dimension)
     else:
-        data = data.sort_values(measure, ascending=False)
 
-    title = f"{_display_name(measure)} by {_display_name(dimension)}"
-
-    labels = {
-        dimension: _display_name(dimension),
-        measure: _display_name(measure),
-    }
-
-    if chart_type in ("donut", "pie"):
-        data = data.head(MAX_PIE_CATEGORIES)
-
-        return px.pie(
-            data,
-            names=dimension,
-            values=measure,
-            hole=0.55 if chart_type == "donut" else 0,
-            title=title,
-            labels=labels,
+        grouped = grouped.sort_values(
+            measure,
+            ascending=False,
         )
 
-    if chart_type == "line":
-        return px.line(
-            data if is_time else data.head(MAX_BAR_CATEGORIES),
+    if top_n and top_n > 0:
+
+        grouped = grouped.head(top_n)
+
+    return grouped.reset_index(drop=True)
+
+
+# ============================================================
+# CHART STYLING
+# ============================================================
+
+def _style_chart(
+    fig: Any,
+    title: str,
+    chart_type: str,
+) -> None:
+
+    fig.update_layout(
+
+        title=dict(
+            text=title,
+            font=dict(
+                size=16,
+                color="#172B52",
+            ),
+        ),
+
+        height=CHART_HEIGHT,
+
+        margin=dict(
+            l=25,
+            r=25,
+            t=60,
+            b=40,
+        ),
+
+        paper_bgcolor="white",
+        plot_bgcolor="white",
+
+        font=dict(
+            family="Inter, sans-serif",
+            color="#263653",
+            size=12,
+        ),
+
+        hoverlabel=dict(
+            bgcolor="white",
+            font_size=12,
+        ),
+
+        showlegend=chart_type in ("Pie", "Donut"),
+
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=-0.2,
+            xanchor="center",
+            x=0.5,
+        ),
+    )
+
+    if chart_type in ("Bar", "Line"):
+
+        fig.update_xaxes(
+            showgrid=True,
+            gridcolor="#EDF0F6",
+            zeroline=False,
+        )
+
+        fig.update_yaxes(
+            showgrid=True,
+            gridcolor="#EDF0F6",
+            zeroline=False,
+        )
+
+
+# ============================================================
+# BUILD PLOTLY CHART
+# ============================================================
+
+def build_chart(
+    df: pd.DataFrame,
+    dimension: str,
+    measure: str,
+    chart_type: str,
+    title: str,
+    top_n: int = 10,
+) -> Any:
+
+    chart_type = _normalise_chart_type(
+        chart_type
+    )
+
+    chart_df = _prepare_chart_data(
+        df=df,
+        dimension=dimension,
+        measure=measure,
+        chart_type=chart_type,
+        top_n=top_n,
+    )
+
+    if chart_df.empty:
+        return None
+
+    # --------------------------------------------------------
+    # BAR CHART - SINGLE CONSISTENT COLOR
+    # --------------------------------------------------------
+
+    if chart_type == "Bar":
+
+        chart_df = chart_df.sort_values(
+            measure,
+            ascending=True,
+        )
+
+        fig = px.bar(
+            chart_df,
+            x=measure,
+            y=dimension,
+            orientation="h",
+            text_auto=".2s",
+        )
+
+        fig.update_traces(
+            marker_color=BAR_COLOR,
+            marker_line_width=0,
+            textposition="outside",
+            cliponaxis=False,
+        )
+
+    # --------------------------------------------------------
+    # LINE CHART
+    # --------------------------------------------------------
+
+    elif chart_type == "Line":
+
+        fig = px.line(
+            chart_df,
             x=dimension,
             y=measure,
             markers=True,
-            title=title,
-            labels=labels,
         )
 
-    if chart_type == "area":
-        return px.area(
-            data if is_time else data.head(MAX_BAR_CATEGORIES),
-            x=dimension,
-            y=measure,
-            title=title,
-            labels=labels,
+        fig.update_traces(
+            line=dict(
+                color=LINE_COLOR,
+                width=3,
+            ),
+            marker=dict(
+                size=8,
+                color=LINE_COLOR,
+            ),
         )
 
-    if chart_type == "box":
-        return px.box(
-            df,
-            x=dimension,
-            y=measure,
-            title=title,
-            labels=labels,
+    # --------------------------------------------------------
+    # DONUT CHART
+    # --------------------------------------------------------
+
+    elif chart_type == "Donut":
+
+        fig = px.pie(
+            chart_df,
+            names=dimension,
+            values=measure,
+            hole=0.58,
+            color_discrete_sequence=CHART_COLORS,
         )
 
-    # Bar is the safe default for category comparisons.
-    data = data.head(MAX_BAR_CATEGORIES)
+        fig.update_traces(
+            textposition="inside",
+            textinfo="percent",
+            marker=dict(
+                line=dict(
+                    color="white",
+                    width=2,
+                )
+            ),
+        )
 
-    # Horizontal bars are easier to read for product and city names.
-    return px.bar(
-        data,
-        x=measure,
-        y=dimension,
-        orientation="h",
-        title=title,
-        labels=labels,
+    # --------------------------------------------------------
+    # PIE CHART
+    # --------------------------------------------------------
+
+    else:
+
+        fig = px.pie(
+            chart_df,
+            names=dimension,
+            values=measure,
+            hole=0,
+            color_discrete_sequence=CHART_COLORS,
+        )
+
+        fig.update_traces(
+            textposition="inside",
+            textinfo="percent+label",
+            marker=dict(
+                line=dict(
+                    color="white",
+                    width=2,
+                )
+            ),
+        )
+
+    _style_chart(
+        fig,
+        title,
+        chart_type,
     )
 
-
-def _style_chart(fig) -> None:
-    fig.update_layout(
-        autosize=True,
-        margin=dict(l=20, r=20, t=65, b=35),
-        legend_title_text="",
-        template="plotly_white",
-    )
-
-    if fig.data and getattr(fig.data[0], "orientation", None) == "h":
-        fig.update_yaxes(autorange="reversed")
+    return fig
 
 
 # ============================================================
-# KPI DISPLAY
+# FOUR CHARTS - AUTOMATIC 2 X 2 LAYOUT
 # ============================================================
 
-def _show_kpis(
-    df: pd.DataFrame,
-    measures: list[str],
+def show_analytics_view(
+    slot: Any,
+    view: dict[str, Any],
+    show_data: bool = False,
 ) -> None:
-    if not measures:
-        return
 
-    # Prefer the most relevant measure, with up to 3 useful KPIs.
-    chosen = measures[:3]
-    columns = st.columns(len(chosen))
-
-    for column, measure in zip(columns, chosen):
-        values = pd.to_numeric(df[measure], errors="coerce").dropna()
-
-        if values.empty:
-            continue
-
-        # A one-row SQL aggregate should display its actual value.
-        if len(df) == 1:
-            value = values.iloc[0]
-        else:
-            value = values.sum()
-
-        column.metric(
-            _display_name(measure),
-            f"{value:,.2f}" if abs(value) < 1e15 else f"{value:.3e}",
+    title = str(
+        view.get(
+            "title",
+            "Analytics",
         )
+    )
+
+    df = view.get("data")
+
+    dimension = view.get("dimension")
+    measure = view.get("measure")
+
+    top_n = int(
+        view.get(
+            "top_n",
+            10,
+        )
+    )
+
+    description = view.get(
+        "description",
+        "",
+    )
+
+    slot.empty()
+
+    with slot.container():
+
+        # ----------------------------------------------------
+        # ANALYSIS HEADER
+        # ----------------------------------------------------
+
+        st.markdown(
+            f"""
+            <div style="
+                padding:16px 20px;
+                border-radius:12px;
+                background:#F5F6FC;
+                border-left:4px solid #635BDB;
+                margin-bottom:15px;
+            ">
+                <div style="
+                    font-size:19px;
+                    font-weight:700;
+                    color:#172B52;
+                ">
+                    {title}
+                </div>
+                <div style="
+                    font-size:12px;
+                    color:#64748B;
+                    margin-top:5px;
+                ">
+                    Interactive analytics · Four visualization formats
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        if description:
+            st.caption(str(description))
+
+        # ----------------------------------------------------
+        # DATA VALIDATION
+        # ----------------------------------------------------
+
+        if not isinstance(df, pd.DataFrame) or df.empty:
+
+            st.info(
+                "No records were found for this analysis."
+            )
+
+            return
+
+        if not dimension or not measure:
+
+            st.warning(
+                "Missing dimension or measure."
+            )
+
+            return
+
+        if (
+            dimension not in df.columns
+            or measure not in df.columns
+        ):
+
+            st.warning(
+                "Required chart columns were not returned."
+            )
+
+            return
+
+        # ----------------------------------------------------
+        # PREPARE DATA ONCE FOR ALL FOUR CHARTS
+        # ----------------------------------------------------
+
+        chart_df = _prepare_chart_data(
+            df=df,
+            dimension=str(dimension),
+            measure=str(measure),
+            chart_type="Bar",
+            top_n=top_n,
+        )
+
+        if chart_df.empty:
+
+            st.info(
+                "No suitable data is available."
+            )
+
+            return
+
+        # ----------------------------------------------------
+        # FIRST ROW: BAR + LINE
+        # ----------------------------------------------------
+
+        row_one = st.columns(
+            2,
+            gap="large",
+        )
+
+        for column, chart_type in zip(
+            row_one,
+            ["Bar", "Line"],
+        ):
+
+            with column:
+
+                with st.container(border=True):
+
+                    st.markdown(
+                        f"**{chart_type} Chart**"
+                    )
+
+                    fig = build_chart(
+                        df=chart_df,
+                        dimension=str(dimension),
+                        measure=str(measure),
+                        chart_type=chart_type,
+                        title=f"{chart_type} Analysis",
+                        top_n=top_n,
+                    )
+
+                    if fig is not None:
+
+                        st.plotly_chart(
+                            fig,
+                            use_container_width=True,
+                            key=(
+                                f"{view.get('chart_key', 'analytics')}"
+                                f"_{chart_type.lower()}"
+                            ),
+                            config={
+                                "displayModeBar": False,
+                                "responsive": True,
+                            },
+                        )
+
+        # ----------------------------------------------------
+        # SECOND ROW: DONUT + PIE
+        # ----------------------------------------------------
+
+        row_two = st.columns(
+            2,
+            gap="large",
+        )
+
+        for column, chart_type in zip(
+            row_two,
+            ["Donut", "Pie"],
+        ):
+
+            with column:
+
+                with st.container(border=True):
+
+                    st.markdown(
+                        f"**{chart_type} Chart**"
+                    )
+
+                    fig = build_chart(
+                        df=chart_df,
+                        dimension=str(dimension),
+                        measure=str(measure),
+                        chart_type=chart_type,
+                        title=f"{chart_type} Analysis",
+                        top_n=top_n,
+                    )
+
+                    if fig is not None:
+
+                        st.plotly_chart(
+                            fig,
+                            use_container_width=True,
+                            key=(
+                                f"{view.get('chart_key', 'analytics')}"
+                                f"_{chart_type.lower()}"
+                            ),
+                            config={
+                                "displayModeBar": False,
+                                "responsive": True,
+                            },
+                        )
+
+        # ----------------------------------------------------
+        # OPTIONAL CHART DATA
+        # ----------------------------------------------------
+
+        if show_data:
+
+            with st.expander(
+                "View analytical chart data"
+            ):
+
+                st.dataframe(
+                    chart_df,
+                    use_container_width=True,
+                    hide_index=True,
+                )
 
 
 # ============================================================
-# MAIN VISUALIZATION FUNCTION
+# BACKWARD-COMPATIBLE FUNCTION
 # ============================================================
 
 def show_visualization(
     df: pd.DataFrame,
     question: str,
-    suggested_type: str = "auto",
+    suggested_type: str = "Bar",
     key_prefix: str = "result",
 ) -> None:
-    """
-    Automatically display one suitable chart and optionally one
-    additional chart when it provides a different useful perspective.
-
-    Compatible with:
-        show_visualization(df, question)
-        show_visualization(df, question, suggested_type="auto")
-    """
 
     if df is None or df.empty:
-        st.info("The query returned no rows, so there is nothing to visualize.")
-        return
-
-    data = _clean_data(df)
-
-    if data.empty:
-        st.info("No usable rows are available for visualization.")
-        return
-
-    measures = _get_measures(data)
-    dimension = _get_dimension(data)
-
-    st.subheader("📊 Query Visualization")
-    st.caption(f"Business question: {question}")
-
-    # Single aggregate result: KPI is usually the clearest presentation.
-    if len(data) == 1:
-        if measures:
-            _show_kpis(data, measures)
-            with st.expander("View query result data"):
-                st.dataframe(data, use_container_width=True, hide_index=True)
-            return
-
-        st.dataframe(data, use_container_width=True, hide_index=True)
-        st.info("This result has no numeric measures to chart.")
-        return
-
-    if not measures:
-        st.info(
-            "No numeric measure was found. Showing the query results as a table."
-        )
-        st.dataframe(data, use_container_width=True, hide_index=True)
-        return
-
-    if dimension is None:
-        _show_kpis(data, measures)
 
         st.info(
-            "This result has no usable category or date dimension. "
-            "Showing its numeric summary instead of creating a misleading chart."
+            "No data is available for visualization."
         )
 
-        with st.expander("View query result data"):
-            st.dataframe(data, use_container_width=True, hide_index=True)
         return
 
-    measure = measures[0]
+    numeric_columns = [
+        column
+        for column in df.select_dtypes(
+            include="number"
+        ).columns
+        if not (
+            str(column).lower().endswith("_id")
+            or str(column).lower().endswith("_key")
+        )
+    ]
 
-    # KPIs are useful context, but charts are limited to one or two.
-    _show_kpis(data, measures)
+    dimensions = [
+        column
+        for column in df.columns
+        if column not in numeric_columns
+    ]
 
-    chart_type = _choose_chart_type(
-        df=data,
-        question=question,
-        dimension=dimension,
-        measure=measure,
-        suggested_type=suggested_type,
-    )
+    if not numeric_columns or not dimensions:
 
-    # First chart: the best fit for this query.
-    fig = _make_chart(
-        data, chart_type, dimension, measure, question
-    )
-
-    if fig is None:
-        st.dataframe(data, use_container_width=True, hide_index=True)
-        st.info("A suitable chart could not be created for this result.")
-        return
-
-    _style_chart(fig)
-    st.plotly_chart(
-        fig,
-        use_container_width=True,
-        key=f"{key_prefix}_primary",
-    )
-
-    # Optional second chart: only when it adds a different perspective.
-    # Do not duplicate a pie and donut or a line and area for one question.
-    secondary_type = None
-
-    if chart_type == "bar":
-        if _question_requests_share(question):
-            if data[dimension].nunique(dropna=True) <= MAX_PIE_CATEGORIES:
-                secondary_type = "donut"
-
-    elif chart_type in ("line", "area"):
-        # For a time series, a bar chart may help compare individual periods.
-        if len(data) <= MAX_BAR_CATEGORIES:
-            secondary_type = "bar"
-
-    elif chart_type in ("pie", "donut"):
-        secondary_type = "bar"
-
-    # Show a second chart only if the query has a useful alternative.
-    if secondary_type:
-        second_fig = _make_chart(
-            data, secondary_type, dimension, measure, question
+        st.info(
+            "The query result needs at least one dimension "
+            "and one numeric measure."
         )
 
-        if second_fig is not None:
-            st.markdown("#### Additional perspective")
-            _style_chart(second_fig)
-            st.plotly_chart(
-                second_fig,
-                use_container_width=True,
-                key=f"{key_prefix}_secondary",
-            )
+        return
 
-    with st.expander("View query result data"):
-        st.dataframe(data, use_container_width=True, hide_index=True)
+    measure = numeric_columns[0]
+    dimension = dimensions[0]
+
+    view = {
+        "title": question,
+        "data": df,
+        "dimension": dimension,
+        "measure": measure,
+        "chart_key": key_prefix,
+    }
+
+    show_analytics_view(
+        st.empty(),
+        view,
+    )
